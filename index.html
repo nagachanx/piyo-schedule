@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>日程調整</title>
+  <link rel="icon" href="piyo-favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="piyo-theme.css">
+  <script src="piyo-theme.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#F5F5F4; --surface:#FFFFFF; --border:#E7E5E4; --border-strong:#D6D3D1;
+      --text-1:#1C1917; --text-2:#44403C; --text-3:#78716C; --text-4:#A8A29E;
+      --icon-bg:#F3F4F6;
+      --primary:#43A86A; --primary-dk:#2D8D57; --primary-lt:#C5E5D1; --primary-bg:#EEF7F1;
+      --warn-bg:#FFFBEB; --warn-border:#FDE68A; --warn-text:#78350F;
+      --danger:#EF4444; --danger-bg:#FEF2F2;
+      --yes:#10B981; --maybe:#F59E0B; --no:#9CA3AF;
+      --radius-card:14px; --radius:8px;
+      --shadow-sm:0 1px 2px rgba(15,23,42,0.04);
+      --ring:0 0 0 3px rgba(61,167,107,0.20);
+      --transition:150ms ease-out;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter','Noto Sans JP',-apple-system,sans-serif; background: var(--bg); min-height: 100vh; color: var(--text-1); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    /* ── ヘッダー（常にシンプル・リンク無効） ── */
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .topbar-inner { max-width: 1100px; width: 100%; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 14px; color: inherit; pointer-events: none; cursor: default; }
+    .brand-logo { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .brand-logo svg { width: 40px; height: 40px; }
+    .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+
+    .page-header { max-width: 1100px; margin: 0 auto; padding: 24px 24px 8px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin-bottom: 6px; }
+    .page-header p { font-size: 14px; color: var(--text-3); }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 16px 24px 60px; }
+
+    /* ── カード／パネル ── */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 24px; margin-bottom: 16px; }
+    .panel h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+    .panel-sub { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .field-required { color: var(--danger); margin-left: 4px; }
+    .field input[type="text"], .field input[type="email"], .field textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit; color: var(--text-1); background: var(--surface);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .field textarea { min-height: 140px; resize: vertical; line-height: 1.6; font-family: 'SF Mono','Menlo',monospace; font-size: 13px; }
+    .field input:focus-visible, .field textarea:focus-visible { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
+    .field-hint { margin-top: 6px; font-size: 12px; color: var(--text-4); }
+    .field-error { margin-top: 6px; font-size: 12px; color: var(--danger); display: none; }
+    .field.has-error .field-error { display: block; }
+    .field.has-error input, .field.has-error textarea { border-color: var(--danger); }
+
+    /* ── ボタン ── */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 10px 18px; border-radius: var(--radius); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all var(--transition); border: 1px solid transparent; }
+    .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dk); }
+    .btn-secondary { background: var(--surface); border-color: var(--border-strong); color: var(--text-2); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+    .btn-danger { background: var(--surface); border-color: var(--border-strong); color: var(--danger); }
+    .btn-danger:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+    .btn-sm { padding: 6px 12px; min-height: 32px; font-size: 12px; }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ── アラート ── */
+    .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.6; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+    .alert svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+    .alert-info { background: var(--primary-bg); border: 1px solid var(--primary-lt); color: var(--primary-dk); }
+    .alert-warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
+    .alert-error { background: var(--danger-bg); border: 1px solid #FECACA; color: #991B1B; }
+
+    /* ── イベント情報表示 ── */
+    .event-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .event-desc { font-size: 14px; color: var(--text-2); white-space: pre-wrap; line-height: 1.7; margin-bottom: 4px; }
+    .event-meta { font-size: 12px; color: var(--text-4); }
+
+    /* ── 集計テーブル ── */
+    .matrix-wrap { overflow-x: auto; margin: 0 -24px; padding: 0 24px 4px; }
+    table.matrix { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 13px; }
+    table.matrix th, table.matrix td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    table.matrix th.col-name { text-align: center; min-width: 100px; position: sticky; left: 0; background: var(--surface); z-index: 2; }
+    table.matrix td.col-name { text-align: center; font-weight: 600; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+    table.matrix thead th { background: #FAFAF9; font-weight: 700; color: var(--text-2); font-size: 12px; border-bottom: 2px solid var(--border); padding: 10px; vertical-align: bottom; }
+    table.matrix thead th.col-name { background: #FAFAF9; }
+    table.matrix thead th.candidate-col { min-width: 100px; max-width: 160px; white-space: normal; line-height: 1.3; }
+    table.matrix thead th.col-comment { min-width: 160px; max-width: 280px; white-space: normal; line-height: 1.3; }
+    table.matrix td.col-comment { text-align: left; white-space: normal; word-break: break-word; min-width: 160px; max-width: 280px; font-size: 12px; color: var(--text-2); line-height: 1.5; }
+    table.matrix td.col-comment:empty::before { content: '—'; color: var(--text-4); }
+    table.matrix .count-cell { font-weight: 700; color: var(--text-3); font-size: 12px; }
+    table.matrix .row-total { background: #FAFAF9; font-weight: 700; }
+    table.matrix .row-total td.col-name { background: #FAFAF9; }
+    table.matrix .row-total-last td { border-bottom: 2px solid var(--border-strong); }
+    table.matrix .col-best { background: color-mix(in srgb, var(--primary) 14%, white); }
+    table.matrix .col-best.count-cell { color: var(--primary-dk); }
+    .status-mark { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-weight: 700; font-size: 12px; }
+    .status-yes { background: color-mix(in srgb, var(--yes) 18%, white); color: var(--yes); }
+    .status-maybe { background: color-mix(in srgb, var(--maybe) 18%, white); color: var(--maybe); }
+    .status-no { background: color-mix(in srgb, var(--no) 18%, white); color: var(--no); }
+    .delete-row-btn { padding: 4px 8px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; cursor: pointer; color: var(--text-3); font-size: 11px; }
+    .delete-row-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* ── 参加フォーム ── */
+    .answer-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .answer-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--icon-bg); border-radius: var(--radius); flex-wrap: wrap; }
+    .answer-label { flex: 1; font-size: 13px; min-width: 140px; }
+    .status-picker { display: inline-flex; gap: 4px; }
+    .status-btn { width: 38px; height: 38px; border: 2px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; color: var(--text-3); transition: all var(--transition); display: inline-flex; align-items: center; justify-content: center; }
+    .status-btn:hover { transform: translateY(-1px); }
+    .status-btn[data-active="yes"] { background: var(--yes); border-color: var(--yes); color: white; }
+    .status-btn[data-active="maybe"] { background: var(--maybe); border-color: var(--maybe); color: white; }
+    .status-btn[data-active="no"] { background: var(--no); border-color: var(--no); color: white; }
+
+    /* ── ローディング・空状態 ── */
+    .loading { text-align: center; padding: 60px 20px; color: var(--text-3); font-size: 13px; }
+    .empty { text-align: center; padding: 40px 20px; color: var(--text-4); font-size: 13px; }
+
+    /* ── フッター ── */
+    footer { max-width: 1100px; margin: 0 auto; padding: 24px; color: var(--text-4); font-size: 12px; text-align: center; }
+
+    @media (max-width: 720px) {
+      .topbar-inner { padding: 10px 16px; }
+      .page-header { padding: 20px 16px 8px; }
+      main { padding: 12px 16px 60px; }
+      .panel { padding: 18px; }
+      .answer-label { min-width: 100%; }
+    }
+
+    /* セクション表示制御 */
+    .mode-section { display: none; }
+    .mode-section.active { display: block; }
+  </style>
+</head>
+<body>
+
+<header class="topbar" role="banner">
+  <div class="topbar-inner">
+    <span class="brand" aria-hidden="true">
+      <div class="brand-logo">
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 9 C19 5 18 1 21 1 C22.5 1 23 4 24 9 Z" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.1" stroke-linejoin="round"/>
+          <path d="M24 9 C29 5 30 1 27 1 C25.5 1 25 4 24 9 Z" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.1" stroke-linejoin="round"/>
+          <circle cx="24" cy="28" r="19" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.2"/>
+          <clipPath id="piyoBody"><circle cx="24" cy="28" r="18"/></clipPath>
+          <rect x="0" y="15" width="48" height="22" fill="#F5EFE0" clip-path="url(#piyoBody)"/>
+          <path d="M20 19.5 Q19 19.8 18 20.5" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+          <path d="M28 19.5 Q29 19.8 30 20.5" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+          <circle cx="15.5" cy="28" r="1.5" fill="#3D2F1F"/>
+          <circle cx="32.5" cy="28" r="1.5" fill="#3D2F1F"/>
+          <path d="M24 25 Q18 28 19.5 32 Q24 34.2 28.5 32 Q30 28 24 25 Z" fill="#FCD34D"/>
+          <path d="M19.5 32 Q24 34.2 28.5 32" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-name">日程調整</div>
+    </span>
+    <button type="button" class="theme-toggle" aria-label="テーマ切替"></button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ────────── 設定エラー ────────── -->
+  <section id="config-error" class="mode-section" hidden>
+    <div class="panel">
+      <div class="alert alert-error">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>設定エラー</strong><br>
+          このページは正しく構成されていません。管理者にお問い合わせください。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────── URLが無効な場合の案内 ────────── -->
+  <section id="mode-empty" class="mode-section">
+    <div class="page-header" style="padding-left:0;padding-right:0;max-width:none">
+      <h1>日程調整</h1>
+      <p>参加URLからアクセスしてください</p>
+    </div>
+    <div class="panel">
+      <div class="alert alert-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>このページにアクセスするには、主催者から共有されたURLが必要です。</strong><br>
+          URLには <code>?event=...</code> のパラメータが含まれます。URLをもう一度ご確認ください。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────── ② 参加・閲覧モード ────────── -->
+  <section id="mode-view" class="mode-section">
+    <div id="view-loading" class="loading">読み込み中…</div>
+    <div id="view-content" style="display:none">
+
+      <div class="panel">
+        <div class="event-title" id="v-title"></div>
+        <div class="event-desc" id="v-desc"></div>
+        <div class="event-meta" id="v-meta"></div>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-bottom:4px">回答一覧</h2>
+        <div class="panel-sub" id="v-summary">まだ回答がありません</div>
+        <div class="matrix-wrap">
+          <table class="matrix" id="v-matrix"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <div class="panel" id="answer-panel">
+        <h2 id="answer-heading">出欠を入力する</h2>
+        <div class="panel-sub" id="my-status"></div>
+        <div class="field">
+          <label class="field-label">お名前<span class="field-required">*</span></label>
+          <input type="text" id="participant-name" maxlength="30" placeholder="例：山田 太郎" required>
+          <div class="field-error">お名前を入力してください</div>
+        </div>
+        <label class="field-label" style="display:block;margin-bottom:8px">日程候補</label>
+        <div id="answer-list" class="answer-list"></div>
+        <div class="field" style="margin-top:16px">
+          <label class="field-label">コメント（任意）</label>
+          <textarea id="participant-comment" maxlength="500" placeholder="例：午後は16時以降ならOKです" style="min-height:70px;font-family:inherit;font-size:14px"></textarea>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
+          <button type="button" class="btn btn-primary" id="answer-submit">入力する</button>
+          <button type="button" class="btn btn-danger" id="answer-delete" style="display:none">自分の回答を削除</button>
+        </div>
+      </div>
+
+    </div>
+    <div id="view-error" class="alert alert-error" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+      <div id="view-error-msg">イベントが見つかりません。URLが正しいかご確認ください。</div>
+    </div>
+  </section>
+
+  <!-- ────────── ③ 管理モード ────────── -->
+  <section id="mode-manage" class="mode-section">
+    <div id="manage-loading" class="loading">読み込み中…</div>
+    <div id="manage-content" style="display:none">
+
+      <div class="alert alert-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>管理画面です。このページのURLは参加者には共有しないでください。参加用URLは <a id="view-url-link" href="#" style="color:inherit;text-decoration:underline">こちら</a></div>
+      </div>
+
+      <div class="panel">
+        <h2>イベント情報の編集</h2>
+        <div class="field">
+          <label class="field-label">イベント名</label>
+          <input type="text" id="m-title" maxlength="100">
+        </div>
+        <div class="field">
+          <label class="field-label">説明</label>
+          <textarea id="m-desc" maxlength="1000" style="min-height:80px;font-family:inherit;font-size:14px"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">主催者名</label>
+          <input type="text" id="m-organizer" maxlength="50">
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="manage-save">変更を保存</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>候補日時</h2>
+        <div class="panel-sub">削除すると、その候補に対する回答もすべて削除されます</div>
+        <div id="m-candidates" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+        <div class="field" style="margin-bottom:0">
+          <label class="field-label">候補日時を追加（1行に1件）</label>
+          <textarea id="m-new-candidates" placeholder="例：5/22（木）10:00-11:00" style="min-height:80px"></textarea>
+          <div class="btn-row" style="margin-top:8px">
+            <button type="button" class="btn btn-secondary" id="manage-add-candidates">候補を追加</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>回答一覧</h2>
+        <div class="matrix-wrap">
+          <table class="matrix" id="m-matrix"><thead></thead><tbody></tbody></table>
+        </div>
+        <div class="btn-row" style="margin-top:16px">
+          <button type="button" class="btn btn-secondary" id="manage-csv">CSVをダウンロード</button>
+        </div>
+      </div>
+
+      <div class="panel" style="border-color:#FECACA">
+        <h2 style="color:var(--danger)">危険な操作</h2>
+        <div class="panel-sub">このイベントと、すべての回答・コメントを完全に削除します。元に戻せません。</div>
+        <button type="button" class="btn btn-danger" id="manage-delete-event">イベントを削除</button>
+      </div>
+
+    </div>
+    <div id="manage-error" class="alert alert-error" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+      <div id="manage-error-msg">管理キーが正しくないか、イベントが見つかりません。</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Powered by ぴよツールズ</footer>
+
+<!-- ─────────────────────── 共通設定 + Supabase SDK ─────────────────────── -->
+<script src="piyo-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = (window.PIYO_CONFIG && window.PIYO_CONFIG.SUPABASE_URL) || '';
+const SUPABASE_ANON_KEY = (window.PIYO_CONFIG && window.PIYO_CONFIG.SUPABASE_ANON_KEY) || '';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('config-error').hidden = false;
+  document.getElementById('config-error').classList.add('active');
+}
+
+const supa = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function nanoid(len) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  let id = '';
+  for (let i = 0; i < len; i++) id += alphabet[bytes[i] % alphabet.length];
+  return id;
+}
+function getParam(k) { return new URLSearchParams(location.search).get(k); }
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  return d.toLocaleString('ja-JP', { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function setBtnLoading(btn, loading, originalText) {
+  if (loading) {
+    btn.dataset.origText = btn.textContent;
+    btn.textContent = '送信中…';
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset.origText || originalText || '';
+    btn.disabled = false;
+  }
+}
+function parseCandidateLines(raw) {
+  return raw.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+const LS_MY_EVENTS = 'piyo-schedule-my-events';
+const LS_MY_ANSWERS = 'piyo-schedule-my-answers';
+function getMyEvents() { try { return JSON.parse(localStorage.getItem(LS_MY_EVENTS) || '{}'); } catch { return {}; } }
+function saveMyEvent(eventId, manageKey) { const m = getMyEvents(); m[eventId] = manageKey; localStorage.setItem(LS_MY_EVENTS, JSON.stringify(m)); }
+function getMyAnswers() { try { return JSON.parse(localStorage.getItem(LS_MY_ANSWERS) || '{}'); } catch { return {}; } }
+function saveMyAnswer(eventId, token) { const m = getMyAnswers(); m[eventId] = token; localStorage.setItem(LS_MY_ANSWERS, JSON.stringify(m)); }
+function clearMyAnswer(eventId) { const m = getMyAnswers(); delete m[eventId]; localStorage.setItem(LS_MY_ANSWERS, JSON.stringify(m)); }
+
+const eventId = getParam('event');
+const manageKey = getParam('key');
+
+function setMode(mode) {
+  document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(mode);
+  if (el) el.classList.add('active');
+}
+
+if (supa) {
+  if (eventId && manageKey) {
+    setMode('mode-manage');
+    initManageMode();
+  } else if (eventId) {
+    setMode('mode-view');
+    initViewMode();
+  } else {
+    setMode('mode-empty');
+  }
+}
+
+async function loadEvent(eventId) {
+  const [evRes, candRes, partRes, availRes] = await Promise.all([
+    supa.from('events').select('*').eq('id', eventId).maybeSingle(),
+    supa.from('candidates').select('*').eq('event_id', eventId).order('order_no'),
+    supa.from('participants').select('*').eq('event_id', eventId).order('created_at'),
+    supa.from('availabilities').select('*, participants!inner(event_id)').eq('participants.event_id', eventId)
+  ]);
+  if (evRes.error) throw evRes.error;
+  if (!evRes.data) return null;
+  return {
+    event: evRes.data,
+    candidates: candRes.data || [],
+    participants: partRes.data || [],
+    availabilities: availRes.data || []
+  };
+}
+
+function renderMatrix(data, opts = {}) {
+  const { showDeleteRow = false } = opts;
+  const { candidates, participants, availabilities } = data;
+  if (candidates.length === 0) return '<div class="empty">候補日時がまだ登録されていません</div>';
+
+  const availMap = new Map();
+  availabilities.forEach(a => availMap.set(`${a.participant_id}:${a.candidate_id}`, a.status));
+
+  const counts = candidates.map(c => {
+    let yes = 0, maybe = 0, no = 0;
+    participants.forEach(p => {
+      const s = availMap.get(`${p.id}:${c.id}`);
+      if (s === 'yes') yes++;
+      else if (s === 'maybe') maybe++;
+      else if (s === 'no') no++;
+    });
+    return { yes, maybe, no, score: yes * 2 + maybe };
+  });
+  const maxScore = Math.max(0, ...counts.map(c => c.score));
+  const bestSet = new Set();
+  if (maxScore > 0) counts.forEach((c, i) => { if (c.score === maxScore) bestSet.add(i); });
+
+  let html = '<thead><tr><th class="col-name">名前</th>';
+  candidates.forEach((c, i) => {
+    html += `<th class="candidate-col ${bestSet.has(i) ? 'col-best' : ''}">${esc(c.label)}</th>`;
+  });
+  html += '<th class="col-comment">コメント</th>';
+  if (showDeleteRow) html += '<th></th>';
+  html += '</tr></thead><tbody>';
+
+  const countRows = [
+    { label: '◯', key: 'yes' },
+    { label: '△', key: 'maybe' },
+    { label: '×', key: 'no' }
+  ];
+  countRows.forEach((row, idx) => {
+    const isLast = idx === countRows.length - 1;
+    html += `<tr class="row-total${isLast ? ' row-total-last' : ''}"><td class="col-name">${row.label}</td>`;
+    counts.forEach((c, i) => {
+      html += `<td class="count-cell ${bestSet.has(i) ? 'col-best' : ''}">${c[row.key]}</td>`;
+    });
+    html += '<td class="col-comment"></td>';
+    if (showDeleteRow) html += '<td></td>';
+    html += '</tr>';
+  });
+
+  if (participants.length === 0) {
+    html += `<tr><td colspan="${candidates.length + 2 + (showDeleteRow ? 1 : 0)}" class="empty" style="padding:24px">まだ回答がありません</td></tr>`;
+  } else {
+    participants.forEach(p => {
+      html += `<tr><td class="col-name">${esc(p.name)}</td>`;
+      candidates.forEach((c, i) => {
+        const s = availMap.get(`${p.id}:${c.id}`) || '';
+        let mark = '<span class="status-mark status-no">―</span>';
+        if (s === 'yes') mark = '<span class="status-mark status-yes">◯</span>';
+        else if (s === 'maybe') mark = '<span class="status-mark status-maybe">△</span>';
+        else if (s === 'no') mark = '<span class="status-mark status-no">×</span>';
+        html += `<td class="${bestSet.has(i) ? 'col-best' : ''}">${mark}</td>`;
+      });
+      html += `<td class="col-comment">${esc(p.comment || '')}</td>`;
+      if (showDeleteRow) {
+        html += `<td><button class="delete-row-btn" data-pid="${p.id}">削除</button></td>`;
+      }
+      html += '</tr>';
+    });
+  }
+
+  html += '</tbody>';
+  return { html, counts, maxScore };
+}
+
+async function initViewMode() {
+  try {
+    const data = await loadEvent(eventId);
+    if (!data) {
+      document.getElementById('view-loading').style.display = 'none';
+      document.getElementById('view-error').style.display = 'flex';
+      return;
+    }
+    renderViewMode(data);
+  } catch (err) {
+    document.getElementById('view-loading').style.display = 'none';
+    document.getElementById('view-error').style.display = 'flex';
+    document.getElementById('view-error-msg').textContent = '読み込みに失敗しました: ' + (err.message || err);
+    console.error(err);
+  }
+}
+
+function renderViewMode(data) {
+  document.getElementById('view-loading').style.display = 'none';
+  document.getElementById('view-content').style.display = '';
+  document.title = `${data.event.title} — 日程調整`;
+
+  document.getElementById('v-title').textContent = data.event.title;
+  document.getElementById('v-desc').textContent = data.event.description || '';
+  if (!data.event.description) document.getElementById('v-desc').style.display = 'none';
+  const meta = [];
+  if (data.event.organizer_name) meta.push(`主催: ${data.event.organizer_name}`);
+  meta.push(`作成: ${fmtDate(data.event.created_at)}`);
+  meta.push(`回答者: ${data.participants.length}名`);
+  document.getElementById('v-meta').textContent = meta.join(' ・ ');
+
+  const matrix = renderMatrix(data);
+  if (typeof matrix === 'string') {
+    document.getElementById('v-matrix').outerHTML = matrix;
+  } else {
+    document.getElementById('v-matrix').innerHTML = matrix.html;
+    if (data.participants.length > 0) {
+      const best = matrix.counts.findIndex(c => c.score === matrix.maxScore && matrix.maxScore > 0);
+      if (best >= 0) {
+        document.getElementById('v-summary').innerHTML = `現在の最有力候補: <strong>${esc(data.candidates[best].label)}</strong>（◯${matrix.counts[best].yes} △${matrix.counts[best].maybe}）`;
+      }
+    }
+  }
+
+  const myToken = getMyAnswers()[eventId];
+  const myParticipant = myToken ? data.participants.find(p => p.edit_token === myToken) : null;
+  if (myParticipant) {
+    document.getElementById('answer-heading').textContent = '出欠を編集する';
+    document.getElementById('my-status').textContent = `${myParticipant.name} さんとして回答済みです`;
+    document.getElementById('participant-name').value = myParticipant.name;
+    document.getElementById('participant-comment').value = myParticipant.comment || '';
+    document.getElementById('answer-delete').style.display = '';
+  } else {
+    document.getElementById('answer-heading').textContent = '出欠を入力する';
+    document.getElementById('my-status').textContent = '';
+    document.getElementById('participant-comment').value = '';
+    document.getElementById('answer-delete').style.display = 'none';
+  }
+
+  const answerList = document.getElementById('answer-list');
+  const availMap = new Map();
+  if (myParticipant) {
+    data.availabilities.filter(a => a.participant_id === myParticipant.id)
+      .forEach(a => availMap.set(a.candidate_id, a.status));
+  }
+  answerList.innerHTML = data.candidates.map(c => {
+    const cur = availMap.get(c.id) || '';
+    return `
+      <div class="answer-row" data-cid="${c.id}">
+        <span class="answer-label">${esc(c.label)}</span>
+        <div class="status-picker" role="radiogroup">
+          <button type="button" class="status-btn" ${cur==='yes'?'data-active="yes"':''} data-status="yes" title="◯ 参加可">◯</button>
+          <button type="button" class="status-btn" ${cur==='maybe'?'data-active="maybe"':''} data-status="maybe" title="△ 可能なら">△</button>
+          <button type="button" class="status-btn" ${cur==='no'?'data-active="no"':''} data-status="no" title="× 不可">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  answerList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.status-btn');
+    if (!btn) return;
+    const row = btn.closest('.answer-row');
+    row.querySelectorAll('.status-btn').forEach(b => b.removeAttribute('data-active'));
+    btn.setAttribute('data-active', btn.dataset.status);
+  });
+
+  document.getElementById('answer-submit').onclick = () => submitAnswer(data, myParticipant);
+  document.getElementById('answer-delete').onclick = () => deleteMyAnswer(myParticipant);
+}
+
+async function submitAnswer(data, existingParticipant) {
+  const nameEl = document.getElementById('participant-name');
+  const name = nameEl.value.trim();
+  if (!name) {
+    nameEl.parentElement.classList.add('has-error');
+    return;
+  }
+  nameEl.parentElement.classList.remove('has-error');
+
+  const comment = (document.getElementById('participant-comment').value || '').trim();
+
+  const answers = Array.from(document.querySelectorAll('#answer-list .answer-row')).map(row => {
+    const cid = row.dataset.cid;
+    const activeBtn = row.querySelector('.status-btn[data-active]');
+    return activeBtn ? { candidate_id: cid, status: activeBtn.dataset.status } : null;
+  }).filter(Boolean);
+
+  if (answers.length === 0) {
+    alert('少なくとも1つの候補にお答えください');
+    return;
+  }
+
+  const submitBtn = document.getElementById('answer-submit');
+  setBtnLoading(submitBtn, true);
+
+  try {
+    let participant = existingParticipant;
+    if (!participant) {
+      const editToken = nanoid(24);
+      const { data: pd, error: e1 } = await supa.from('participants').insert({
+        id: nanoid(14), event_id: eventId, name, comment: comment || null,
+        edit_token: editToken,
+        created_at: new Date().toISOString()
+      }).select().single();
+      if (e1) throw e1;
+      participant = pd;
+      saveMyAnswer(eventId, editToken);
+    } else {
+      const { error: eu } = await supa.from('participants').update({
+        name, comment: comment || null
+      }).eq('id', participant.id).eq('edit_token', participant.edit_token);
+      if (eu) throw eu;
+    }
+
+    await supa.from('availabilities').delete().eq('participant_id', participant.id);
+    const rows = answers.map(a => ({ participant_id: participant.id, candidate_id: a.candidate_id, status: a.status }));
+    const { error: e2 } = await supa.from('availabilities').insert(rows);
+    if (e2) throw e2;
+
+    const fresh = await loadEvent(eventId);
+    renderViewMode(fresh);
+    alert('回答を保存しました');
+  } catch (err) {
+    alert('保存に失敗しました: ' + (err.message || err));
+    console.error(err);
+  } finally {
+    setBtnLoading(submitBtn, false, '入力する');
+  }
+}
+
+async function deleteMyAnswer(participant) {
+  if (!participant) return;
+  if (!confirm('自分の回答を削除します。よろしいですか？')) return;
+  try {
+    await supa.from('availabilities').delete().eq('participant_id', participant.id);
+    await supa.from('participants').delete().eq('id', participant.id).eq('edit_token', participant.edit_token);
+    clearMyAnswer(eventId);
+    const fresh = await loadEvent(eventId);
+    renderViewMode(fresh);
+  } catch (err) {
+    alert('削除に失敗しました: ' + (err.message || err));
+  }
+}
+
+async function initManageMode() {
+  try {
+    const data = await loadEvent(eventId);
+    if (!data) {
+      document.getElementById('manage-loading').style.display = 'none';
+      document.getElementById('manage-error').style.display = 'flex';
+      return;
+    }
+    if (data.event.manage_key !== manageKey) {
+      document.getElementById('manage-loading').style.display = 'none';
+      document.getElementById('manage-error').style.display = 'flex';
+      document.getElementById('manage-error-msg').textContent = '管理キーが正しくありません。';
+      return;
+    }
+    saveMyEvent(eventId, manageKey);
+    renderManageMode(data);
+  } catch (err) {
+    document.getElementById('manage-loading').style.display = 'none';
+    document.getElementById('manage-error').style.display = 'flex';
+    document.getElementById('manage-error-msg').textContent = '読み込みに失敗しました: ' + (err.message || err);
+  }
+}
+
+function renderManageMode(data) {
+  document.getElementById('manage-loading').style.display = 'none';
+  document.getElementById('manage-content').style.display = '';
+  document.title = `${data.event.title} — 管理`;
+  document.getElementById('view-url-link').href = `?event=${eventId}`;
+
+  document.getElementById('m-title').value = data.event.title;
+  document.getElementById('m-desc').value = data.event.description || '';
+  document.getElementById('m-organizer').value = data.event.organizer_name || '';
+
+  document.getElementById('m-candidates').innerHTML = data.candidates.map(c => `
+    <div style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:var(--icon-bg);border-radius:8px">
+      <input type="text" class="m-cand-input" data-cid="${c.id}" value="${esc(c.label)}" style="flex:1;border:1px solid var(--border);background:var(--surface);padding:6px 10px;border-radius:6px;font-size:13px;font-family:inherit">
+      <button type="button" class="delete-row-btn" data-cid="${c.id}" data-action="del-cand">削除</button>
+    </div>
+  `).join('') || '<div class="empty" style="padding:16px">候補日時がまだありません</div>';
+
+  const matrix = renderMatrix(data, { showDeleteRow: true });
+  document.getElementById('m-matrix').innerHTML = typeof matrix === 'string' ? matrix : matrix.html;
+
+  document.getElementById('manage-save').onclick = async () => {
+    try {
+      const newTitle = document.getElementById('m-title').value.trim();
+      if (!newTitle) { alert('イベント名は必須です'); return; }
+      const { error } = await supa.from('events').update({
+        title: newTitle,
+        description: document.getElementById('m-desc').value.trim(),
+        organizer_name: document.getElementById('m-organizer').value.trim() || null
+      }).eq('id', eventId).eq('manage_key', manageKey);
+      if (error) throw error;
+      const promises = Array.from(document.querySelectorAll('.m-cand-input')).map(input => {
+        return supa.from('candidates').update({ label: input.value.trim() }).eq('id', input.dataset.cid).eq('event_id', eventId);
+      });
+      await Promise.all(promises);
+      const fresh = await loadEvent(eventId);
+      renderManageMode(fresh);
+      alert('保存しました');
+    } catch (err) {
+      alert('保存に失敗しました: ' + (err.message || err));
+    }
+  };
+
+  document.getElementById('manage-add-candidates').onclick = async () => {
+    const lines = parseCandidateLines(document.getElementById('m-new-candidates').value);
+    if (lines.length === 0) return;
+    if (data.candidates.length + lines.length > 50) {
+      alert(`候補日時は最大50件までです（現在 ${data.candidates.length}件）`);
+      return;
+    }
+    try {
+      const maxOrder = Math.max(-1, ...data.candidates.map(c => c.order_no));
+      const rows = lines.map((label, i) => ({
+        id: nanoid(14), event_id: eventId, label, order_no: maxOrder + 1 + i
+      }));
+      const { error } = await supa.from('candidates').insert(rows);
+      if (error) throw error;
+      document.getElementById('m-new-candidates').value = '';
+      const fresh = await loadEvent(eventId);
+      renderManageMode(fresh);
+    } catch (err) {
+      alert('追加に失敗しました: ' + (err.message || err));
+    }
+  };
+
+  document.getElementById('m-candidates').onclick = async (e) => {
+    const btn = e.target.closest('button[data-action="del-cand"]');
+    if (!btn) return;
+    const cid = btn.dataset.cid;
+    if (!confirm('この候補日時を削除すると、紐づく回答もすべて消えます。よろしいですか？')) return;
+    try {
+      await supa.from('availabilities').delete().eq('candidate_id', cid);
+      await supa.from('candidates').delete().eq('id', cid).eq('event_id', eventId);
+      const fresh = await loadEvent(eventId);
+      renderManageMode(fresh);
+    } catch (err) {
+      alert('削除に失敗しました: ' + (err.message || err));
+    }
+  };
+
+  document.getElementById('m-matrix').onclick = async (e) => {
+    const btn = e.target.closest('.delete-row-btn[data-pid]');
+    if (!btn) return;
+    if (!confirm('この回答者を削除します。よろしいですか？')) return;
+    try {
+      const pid = btn.dataset.pid;
+      await supa.from('availabilities').delete().eq('participant_id', pid);
+      await supa.from('participants').delete().eq('id', pid).eq('event_id', eventId);
+      const fresh = await loadEvent(eventId);
+      renderManageMode(fresh);
+    } catch (err) {
+      alert('削除に失敗しました: ' + (err.message || err));
+    }
+  };
+
+  document.getElementById('manage-csv').onclick = () => exportCSV(data);
+
+  document.getElementById('manage-delete-event').onclick = async () => {
+    if (!confirm('本当にこのイベントを完全に削除しますか？回答・コメントも全て消えて、元に戻せません。')) return;
+    if (!confirm('もう一度確認: 削除してよろしいですか？')) return;
+    try {
+      const cids = data.candidates.map(c => c.id);
+      const pids = data.participants.map(p => p.id);
+      if (pids.length) await supa.from('availabilities').delete().in('participant_id', pids);
+      if (cids.length) await supa.from('candidates').delete().in('id', cids);
+      if (pids.length) await supa.from('participants').delete().in('id', pids);
+      await supa.from('events').delete().eq('id', eventId).eq('manage_key', manageKey);
+      const m = getMyEvents(); delete m[eventId]; localStorage.setItem(LS_MY_EVENTS, JSON.stringify(m));
+      alert('イベントを削除しました');
+      location.href = '.';
+    } catch (err) {
+      alert('削除に失敗しました: ' + (err.message || err));
+    }
+  };
+}
+
+function exportCSV(data) {
+  const rows = [];
+  const header = ['名前', ...data.candidates.map(c => c.label), 'コメント', '更新日時'];
+  rows.push(header);
+  const availMap = new Map();
+  data.availabilities.forEach(a => availMap.set(`${a.participant_id}:${a.candidate_id}`, a.status));
+  data.participants.forEach(p => {
+    const row = [p.name];
+    data.candidates.forEach(c => {
+      const s = availMap.get(`${p.id}:${c.id}`);
+      row.push(s === 'yes' ? '◯' : s === 'maybe' ? '△' : s === 'no' ? '×' : '');
+    });
+    row.push(p.comment || '');
+    row.push(fmtDate(p.created_at));
+    rows.push(row);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = (data.event.title || 'event').replace(/[\\/:*?"<>|]/g, '_');
+  a.href = url; a.download = `${fname}_${eventId}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+</script>
+</body>
+</html>
