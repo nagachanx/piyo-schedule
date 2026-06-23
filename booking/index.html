@@ -39,18 +39,18 @@
 
     .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px 80px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
-    .event-head-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-    .event-title { font-size: 24px; font-weight: 800; margin: 0; }
+    .event-title { font-size: 26px; font-weight: 800; margin: 0 0 12px; line-height: 1.25; letter-spacing: -0.01em; }
+    .event-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
     .event-desc { color: var(--text-3); font-size: 14px; white-space: pre-wrap; margin-top: 4px; }
-    .event-chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .chip {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px;
-      background: var(--primary-bg); color: var(--primary-dk);
-      border: 1px solid var(--primary-lt); border-radius: 999px;
-      font-weight: 600; font-size: 13px; white-space: nowrap;
+      padding: 5px 12px;
+      background: #F5F5F4; color: var(--text-2);
+      border: 1px solid var(--border); border-radius: 999px;
+      font-size: 12.5px; font-weight: 600; white-space: nowrap;
     }
-    .chip strong { font-size: 15px; font-weight: 800; margin: 0 2px; }
+    .chip svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--text-3); stroke-width: 2; }
+    .chip strong { font-weight: 800; color: var(--text-1); margin: 0 1px; font-size: 13px; }
 
     .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
     .alert.success { background: #ECFDF5; color: #065F46; border: 1px solid #BBF7D0; }
@@ -160,12 +160,16 @@
 
   <div id="screen-main" hidden>
     <div class="card">
-      <div class="event-head-row">
-        <h1 id="ev-title" class="event-title">—</h1>
-        <div class="event-chips">
-          <span class="chip">🕐 1枠 <strong id="ev-duration">—</strong> 分</span>
-          <span class="chip" id="ev-cap-chip" hidden>👥 1枠 <strong id="ev-cap">—</strong> 名</span>
-        </div>
+      <h1 id="ev-title" class="event-title">—</h1>
+      <div class="event-chips">
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          1枠 <strong id="ev-duration">—</strong> 分
+        </span>
+        <span class="chip" id="ev-cap-chip" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          1枠 <strong id="ev-cap">—</strong> 名
+        </span>
       </div>
       <div id="ev-desc" class="event-desc"></div>
     </div>
