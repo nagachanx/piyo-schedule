@@ -84,8 +84,8 @@
     .cal-head.today { background: #FEF3C7; color: #92400E; }
     .cal-head .dow { display: block; font-size: 11px; color: var(--text-3); font-weight: 600; }
     .cal-time { background: #FAFAF9; padding: 4px 8px 4px 4px; font-size: 11px; font-weight: 600; color: var(--text-3); display: flex; align-items: center; justify-content: flex-end; }
-    .cal-cell { background: #fff; min-height: var(--cal-cell-min-h, 38px); padding: 3px; position: relative; display: flex; }
-    .cal-cell .slot { width: 100%; background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: 6px; padding: 6px 6px; font-size: 12px; font-weight: 700; color: var(--primary-dk); text-align: center; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: center; }
+    .cal-cell { background: #fff; min-height: var(--cal-cell-min-h, 22px); padding: 1px; position: relative; display: flex; }
+    .cal-cell .slot { width: 100%; background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: 4px; padding: 1px 4px; font-size: 11px; font-weight: 700; color: var(--primary-dk); text-align: center; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
     .cal-cell .slot:hover:not(.full):not(.past) { background: var(--primary); color: #fff; }
     .cal-cell .slot.full { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
     .cal-cell .slot.past { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
@@ -410,8 +410,8 @@ async function loadEvent(){
   } else {
     capChip.hidden = true;
   }
-  // セル高さを時間に比例（15分=22px、30分=44px、45分=66px、60分=88px）— 視覚的に時間幅が分かりつつコンパクトに
-  document.documentElement.style.setProperty('--cal-cell-min-h', ((ev.slot_duration_min / 15) * 22) + 'px');
+  // セル高さを時間に比例（15分=11px、30分=22px、45分=33px、60分=44px）— 縦幅をコンパクトに
+  document.documentElement.style.setProperty('--cal-cell-min-h', ((ev.slot_duration_min / 15) * 11) + 'px');
   document.getElementById('screen-loading').hidden = true;
   document.getElementById('screen-main').hidden = false;
   await loadSlots();
