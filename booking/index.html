@@ -314,31 +314,33 @@ function buildOutlookBody(desc, cancelUrl){
   }
   return parts.join('');
 }
-function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl){
-  const p = new URLSearchParams({
+function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl, attendeeEmail){
+  const params = {
     path: '/calendar/action/compose', rru: 'addevent',
     subject: title,
     startdt: startsAt.toISOString(),
     enddt: endsAt.toISOString(),
     body: buildOutlookBody(desc, cancelUrl),
     location: buildLocationField(location, meetingUrl)
-  });
-  return 'https://outlook.office.com/calendar/0/deeplink/compose?' + p.toString();
+  };
+  if (attendeeEmail) params.to = attendeeEmail;
+  return 'https://outlook.office.com/calendar/0/deeplink/compose?' + new URLSearchParams(params).toString();
 }
-function buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl){
-  const p = new URLSearchParams({
+function buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl, attendeeEmail){
+  const params = {
     action: 'TEMPLATE',
     text: title,
     dates: utcCompact(startsAt) + '/' + utcCompact(endsAt),
     details: buildEventBody(desc, cancelUrl),
     location: buildLocationField(location, meetingUrl)
-  });
-  return 'https://calendar.google.com/calendar/render?' + p.toString();
+  };
+  if (attendeeEmail) params.add = attendeeEmail;
+  return 'https://calendar.google.com/calendar/render?' + new URLSearchParams(params).toString();
 }
-function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl){
+function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl, attendeeEmail){
   const esc = s => String(s == null ? '' : s)
     .replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
-  return [
+  const lines = [
     'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PiyoTools//Booking//JP',
     'CALSCALE:GREGORIAN','METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -348,9 +350,13 @@ function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, canc
     'DTEND:' + utcCompact(endsAt),
     'SUMMARY:' + esc(title),
     'LOCATION:' + esc(buildLocationField(location, meetingUrl)),
-    'DESCRIPTION:' + esc(buildEventBody(desc, cancelUrl)),
-    'END:VEVENT','END:VCALENDAR'
-  ].join('\r\n');
+    'DESCRIPTION:' + esc(buildEventBody(desc, cancelUrl))
+  ];
+  if (attendeeEmail) {
+    lines.push('ATTENDEE;CN=管理者;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:' + attendeeEmail);
+  }
+  lines.push('END:VEVENT', 'END:VCALENDAR');
+  return lines.join('\r\n');
 }
 function downloadIcs(ics, filename){
   const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
@@ -372,15 +378,15 @@ function calendarAddHtml(){
       <div style="font-size:11px;color:var(--text-3);margin-top:6px">Outlook は職場アカウント用。Apple カレンダーは .ics をダウンロードしてください。</div>
     </div>`;
 }
-function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl){
+function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl, attendeeEmail){
   const outlook = scope.querySelector('[data-cal="outlook"]');
   const google  = scope.querySelector('[data-cal="google"]');
   const ics     = scope.querySelector('[data-cal="ics"]');
-  if (outlook) outlook.href = buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl);
-  if (google)  google.href  = buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl);
+  if (outlook) outlook.href = buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl, attendeeEmail);
+  if (google)  google.href  = buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl, attendeeEmail);
   if (ics) ics.addEventListener('click', () => {
     const safeTitle = (title || 'booking').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40);
-    downloadIcs(buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl), safeTitle + '.ics');
+    downloadIcs(buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl, attendeeEmail), safeTitle + '.ics');
   });
 }
 
@@ -697,7 +703,7 @@ function showCompletion(slot, startsAt, endsAt, name, token){
     </div>
   `);
   const modalEl = document.getElementById('modal-body');
-  wireCalendarAdd(modalEl, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, token, cancelUrl);
+  wireCalendarAdd(modalEl, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, token, cancelUrl, slot.created_by_email);
   document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
   document.getElementById('copy-cancel-url').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(cancelUrl); document.getElementById('copy-cancel-url').textContent = 'コピー済み✓'; }
@@ -754,7 +760,7 @@ async function renderCancelScreen(){
       </div>
     </div>`;
   const cancelUrl2 = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(state.cancelToken);
-  wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken, cancelUrl2);
+  wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken, cancelUrl2, slot.created_by_email);
   document.getElementById('btn-do-cancel').addEventListener('click', async () => {
     if (!confirm('この予約をキャンセルしますか？')) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
