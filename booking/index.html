@@ -39,9 +39,18 @@
 
     .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px 80px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
-    .event-title { font-size: 24px; font-weight: 800; margin: 0 0 6px; }
-    .event-desc { color: var(--text-3); font-size: 14px; white-space: pre-wrap; }
-    .event-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); margin-top: 10px; }
+    .event-head-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .event-title { font-size: 24px; font-weight: 800; margin: 0; }
+    .event-desc { color: var(--text-3); font-size: 14px; white-space: pre-wrap; margin-top: 4px; }
+    .event-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--primary-bg); color: var(--primary-dk);
+      border: 1px solid var(--primary-lt); border-radius: 999px;
+      font-weight: 600; font-size: 13px; white-space: nowrap;
+    }
+    .chip strong { font-size: 15px; font-weight: 800; margin: 0 2px; }
 
     .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
     .alert.success { background: #ECFDF5; color: #065F46; border: 1px solid #BBF7D0; }
@@ -75,17 +84,17 @@
     .cal-head.today { background: #FEF3C7; color: #92400E; }
     .cal-head .dow { display: block; font-size: 11px; color: var(--text-3); font-weight: 600; }
     .cal-time { background: #FAFAF9; padding: 4px; font-size: 11px; font-weight: 600; text-align: right; color: var(--text-3); padding-right: 8px; }
-    .cal-cell { background: #fff; min-height: 38px; padding: 2px; position: relative; }
-    .cal-cell .slot { background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: 6px; padding: 3px 6px; font-size: 11px; font-weight: 700; color: var(--primary-dk); text-align: center; cursor: pointer; transition: all 0.12s; }
+    .cal-cell { background: #fff; min-height: var(--cal-cell-min-h, 38px); padding: 3px; position: relative; display: flex; }
+    .cal-cell .slot { width: 100%; background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: 6px; padding: 6px 6px; font-size: 12px; font-weight: 700; color: var(--primary-dk); text-align: center; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: center; }
     .cal-cell .slot:hover:not(.full):not(.past) { background: var(--primary); color: #fff; }
     .cal-cell .slot.full { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
     .cal-cell .slot.past { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
 
+    .cal-mobile { display: none; }
     @media (max-width: 760px) {
       .cal-grid { display: none; }
       .cal-mobile { display: block; }
     }
-    .cal-mobile { display: none; }
     .cal-day { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
     .cal-day-head { background: #FAFAF9; padding: 10px 14px; font-weight: 700; font-size: 13px; }
     .cal-day-head.today { background: #FEF3C7; color: #92400E; }
@@ -151,11 +160,14 @@
 
   <div id="screen-main" hidden>
     <div class="card">
-      <h1 id="ev-title" class="event-title">—</h1>
-      <div id="ev-desc" class="event-desc"></div>
-      <div class="event-meta">
-        <span>🕐 1枠 <span id="ev-duration"></span>分</span>
+      <div class="event-head-row">
+        <h1 id="ev-title" class="event-title">—</h1>
+        <div class="event-chips">
+          <span class="chip">🕐 1枠 <strong id="ev-duration">—</strong> 分</span>
+          <span class="chip" id="ev-cap-chip" hidden>👥 1枠 <strong id="ev-cap">—</strong> 名</span>
+        </div>
       </div>
+      <div id="ev-desc" class="event-desc"></div>
     </div>
 
     <div class="cal-toolbar">
@@ -219,39 +231,48 @@ function utcCompact(d){
   return d.getUTCFullYear() + p(d.getUTCMonth()+1) + p(d.getUTCDate()) + 'T' +
          p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
 }
-function buildEventBody(desc, meetingUrl){
+// 場所＋ミーティングURL を1つの文字列にまとめる（Outlookの「ルームまたは場所」欄に入れる）
+function buildLocationField(location, meetingUrl){
+  const parts = [];
+  if (location) parts.push(location);
+  if (meetingUrl) parts.push(meetingUrl);
+  return parts.join(' / ');
+}
+// イベント本文（メモ欄）：説明 + 予約管理URL案内
+function buildEventBody(desc, cancelUrl){
   const lines = [];
-  if (desc) lines.push(desc);
-  if (meetingUrl) { if (lines.length) lines.push(''); lines.push('参加URL: ' + meetingUrl); }
+  if (desc) lines.push(desc, '');
+  if (cancelUrl) {
+    lines.push('🔗 予約管理URL（キャンセル用）');
+    lines.push(cancelUrl);
+    lines.push('このURLでいつでもキャンセル・確認できます。控えとして保存してください。');
+  }
   return lines.join('\n');
 }
-function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt){
-  const body = buildEventBody(desc, meetingUrl);
+function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl){
   const p = new URLSearchParams({
     path: '/calendar/action/compose', rru: 'addevent',
     subject: title,
     startdt: startsAt.toISOString(),
     enddt: endsAt.toISOString(),
-    body: body,
-    location: location || ''
+    body: buildEventBody(desc, cancelUrl),
+    location: buildLocationField(location, meetingUrl)
   });
   return 'https://outlook.office.com/calendar/0/deeplink/compose?' + p.toString();
 }
-function buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt){
-  const body = buildEventBody(desc, meetingUrl);
+function buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl){
   const p = new URLSearchParams({
     action: 'TEMPLATE',
     text: title,
     dates: utcCompact(startsAt) + '/' + utcCompact(endsAt),
-    details: body,
-    location: location || ''
+    details: buildEventBody(desc, cancelUrl),
+    location: buildLocationField(location, meetingUrl)
   });
   return 'https://calendar.google.com/calendar/render?' + p.toString();
 }
-function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid){
+function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl){
   const esc = s => String(s == null ? '' : s)
     .replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
-  const body = buildEventBody(desc, meetingUrl);
   return [
     'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PiyoTools//Booking//JP',
     'CALSCALE:GREGORIAN','METHOD:PUBLISH',
@@ -261,8 +282,8 @@ function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid){
     'DTSTART:' + utcCompact(startsAt),
     'DTEND:' + utcCompact(endsAt),
     'SUMMARY:' + esc(title),
-    'LOCATION:' + esc(location || ''),
-    'DESCRIPTION:' + esc(body),
+    'LOCATION:' + esc(buildLocationField(location, meetingUrl)),
+    'DESCRIPTION:' + esc(buildEventBody(desc, cancelUrl)),
     'END:VEVENT','END:VCALENDAR'
   ].join('\r\n');
 }
@@ -286,15 +307,15 @@ function calendarAddHtml(){
       <div style="font-size:11px;color:var(--text-3);margin-top:6px">Outlook は職場アカウント用。Apple カレンダーは .ics をダウンロードしてください。</div>
     </div>`;
 }
-function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid){
+function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl){
   const outlook = scope.querySelector('[data-cal="outlook"]');
   const google  = scope.querySelector('[data-cal="google"]');
   const ics     = scope.querySelector('[data-cal="ics"]');
-  if (outlook) outlook.href = buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt);
-  if (google)  google.href  = buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt);
+  if (outlook) outlook.href = buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl);
+  if (google)  google.href  = buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl);
   if (ics) ics.addEventListener('click', () => {
     const safeTitle = (title || 'booking').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40);
-    downloadIcs(buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid), safeTitle + '.ics');
+    downloadIcs(buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl), safeTitle + '.ics');
   });
 }
 
@@ -363,6 +384,16 @@ async function loadEvent(){
   document.getElementById('ev-title').textContent = ev.title;
   document.getElementById('ev-desc').textContent = ev.description || '';
   document.getElementById('ev-duration').textContent = ev.slot_duration_min;
+  // 定員チップ：一律モードのときだけ表示（個別モードでは枠ごとに違うので表示しない）
+  const capChip = document.getElementById('ev-cap-chip');
+  if (ev.capacity_mode === 'uniform') {
+    document.getElementById('ev-cap').textContent = ev.default_capacity;
+    capChip.hidden = false;
+  } else {
+    capChip.hidden = true;
+  }
+  // セル高さを時間に比例（15分=32px、60分=128px）— 視覚的に時間幅が分かるように
+  document.documentElement.style.setProperty('--cal-cell-min-h', ((ev.slot_duration_min / 15) * 32) + 'px');
   document.getElementById('screen-loading').hidden = true;
   document.getElementById('screen-main').hidden = false;
   await loadSlots();
@@ -559,7 +590,7 @@ function showCompletion(slot, startsAt, endsAt, name, token){
     </div>
   `);
   const modalEl = document.getElementById('modal-body');
-  wireCalendarAdd(modalEl, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, token);
+  wireCalendarAdd(modalEl, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, token, cancelUrl);
   document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
   document.getElementById('copy-cancel-url').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(cancelUrl); document.getElementById('copy-cancel-url').textContent = 'コピー済み✓'; }
@@ -615,7 +646,8 @@ async function renderCancelScreen(){
         <button class="btn btn-danger" id="btn-do-cancel">予約をキャンセル</button>
       </div>
     </div>`;
-  wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken);
+  const cancelUrl2 = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(state.cancelToken);
+  wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken, cancelUrl2);
   document.getElementById('btn-do-cancel').addEventListener('click', async () => {
     if (!confirm('この予約をキャンセルしますか？')) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
