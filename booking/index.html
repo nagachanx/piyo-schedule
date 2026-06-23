@@ -238,7 +238,7 @@ function buildLocationField(location, meetingUrl){
   if (meetingUrl) parts.push(meetingUrl);
   return parts.join(' / ');
 }
-// イベント本文（メモ欄）：説明 + 予約管理URL案内
+// プレーンテキスト本文（Google / ICS 用）
 function buildEventBody(desc, cancelUrl){
   const lines = [];
   if (desc) lines.push(desc, '');
@@ -249,13 +249,27 @@ function buildEventBody(desc, cancelUrl){
   }
   return lines.join('\n');
 }
+// HTML本文（Outlook 用：Outlook はbodyをHTMLとしてレンダリングするため改行を <br> に）
+function buildOutlookBody(desc, cancelUrl){
+  const escapeHtmlOut = s => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const parts = [];
+  if (desc) parts.push(escapeHtmlOut(desc).replace(/\n/g, '<br>'));
+  if (cancelUrl) {
+    if (parts.length) parts.push('<br><br>');
+    parts.push('🔗 <strong>予約管理URL（キャンセル用）</strong><br>');
+    parts.push('<a href="' + escapeHtmlOut(cancelUrl) + '">' + escapeHtmlOut(cancelUrl) + '</a><br>');
+    parts.push('このURLでいつでもキャンセル・確認できます。控えとして保存してください。');
+  }
+  return parts.join('');
+}
 function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt, cancelUrl){
   const p = new URLSearchParams({
     path: '/calendar/action/compose', rru: 'addevent',
     subject: title,
     startdt: startsAt.toISOString(),
     enddt: endsAt.toISOString(),
-    body: buildEventBody(desc, cancelUrl),
+    body: buildOutlookBody(desc, cancelUrl),
     location: buildLocationField(location, meetingUrl)
   });
   return 'https://outlook.office.com/calendar/0/deeplink/compose?' + p.toString();
