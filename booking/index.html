@@ -213,6 +213,91 @@ function genToken(){
   });
 }
 
+// ─── カレンダー追加用ヘルパー（Outlook / Google / ICS） ───
+function utcCompact(d){
+  const p = n => String(n).padStart(2,'0');
+  return d.getUTCFullYear() + p(d.getUTCMonth()+1) + p(d.getUTCDate()) + 'T' +
+         p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
+}
+function buildEventBody(desc, meetingUrl){
+  const lines = [];
+  if (desc) lines.push(desc);
+  if (meetingUrl) { if (lines.length) lines.push(''); lines.push('参加URL: ' + meetingUrl); }
+  return lines.join('\n');
+}
+function buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt){
+  const body = buildEventBody(desc, meetingUrl);
+  const p = new URLSearchParams({
+    path: '/calendar/action/compose', rru: 'addevent',
+    subject: title,
+    startdt: startsAt.toISOString(),
+    enddt: endsAt.toISOString(),
+    body: body,
+    location: location || ''
+  });
+  return 'https://outlook.office.com/calendar/0/deeplink/compose?' + p.toString();
+}
+function buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt){
+  const body = buildEventBody(desc, meetingUrl);
+  const p = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: utcCompact(startsAt) + '/' + utcCompact(endsAt),
+    details: body,
+    location: location || ''
+  });
+  return 'https://calendar.google.com/calendar/render?' + p.toString();
+}
+function buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid){
+  const esc = s => String(s == null ? '' : s)
+    .replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+  const body = buildEventBody(desc, meetingUrl);
+  return [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PiyoTools//Booking//JP',
+    'CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:' + uid + '@piyo-tools',
+    'DTSTAMP:' + utcCompact(new Date()),
+    'DTSTART:' + utcCompact(startsAt),
+    'DTEND:' + utcCompact(endsAt),
+    'SUMMARY:' + esc(title),
+    'LOCATION:' + esc(location || ''),
+    'DESCRIPTION:' + esc(body),
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+}
+function downloadIcs(ics, filename){
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+function calendarAddHtml(){
+  return `
+    <div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px">📅 自分のカレンダーに追加</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <a class="btn btn-sm" data-cal="outlook" href="#" target="_blank" rel="noopener">Outlook</a>
+        <a class="btn btn-sm" data-cal="google"  href="#" target="_blank" rel="noopener">Google</a>
+        <button class="btn btn-sm" data-cal="ics">.ics でダウンロード</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px">Outlook は職場アカウント用。Apple カレンダーは .ics をダウンロードしてください。</div>
+    </div>`;
+}
+function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid){
+  const outlook = scope.querySelector('[data-cal="outlook"]');
+  const google  = scope.querySelector('[data-cal="google"]');
+  const ics     = scope.querySelector('[data-cal="ics"]');
+  if (outlook) outlook.href = buildOutlookUrl(title, desc, location, meetingUrl, startsAt, endsAt);
+  if (google)  google.href  = buildGoogleUrl(title, desc, location, meetingUrl, startsAt, endsAt);
+  if (ics) ics.addEventListener('click', () => {
+    const safeTitle = (title || 'booking').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40);
+    downloadIcs(buildIcs(title, desc, location, meetingUrl, startsAt, endsAt, uid), safeTitle + '.ics');
+  });
+}
+
 const state = { eventId: null, cancelToken: null, event: null, weekStart: startOfWeek(new Date()), slots: [], resCounts: {} };
 
 function showAlert(type, msg){
@@ -460,6 +545,7 @@ function showCompletion(slot, startsAt, endsAt, name, token){
       <div style="font-size:13px;color:#065F46;margin-top:8px">お名前</div>
       <div style="font-weight:700">${escapeHtml(name)}</div>
     </div>
+    ${calendarAddHtml()}
     ${meetingHtml}
     ${locationHtml}
     <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);padding:12px;margin-bottom:12px">
@@ -472,6 +558,8 @@ function showCompletion(slot, startsAt, endsAt, name, token){
       <button class="btn-primary" data-modal-close>閉じる</button>
     </div>
   `);
+  const modalEl = document.getElementById('modal-body');
+  wireCalendarAdd(modalEl, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, token);
   document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
   document.getElementById('copy-cancel-url').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(cancelUrl); document.getElementById('copy-cancel-url').textContent = 'コピー済み✓'; }
@@ -512,13 +600,14 @@ async function renderCancelScreen(){
     <div class="card">
       <h1 class="event-title">あなたの予約</h1>
       <p class="event-desc">${escapeHtml(ev.title)}</p>
-      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:14px;margin-top:14px">
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:14px;margin-top:14px;margin-bottom:14px">
         <div style="font-size:13px;color:#065F46;margin-bottom:4px">予約日時</div>
         <div style="font-weight:700;font-size:16px">${fmtDateTime(startsAt)}–${fmtTime(endsAt)}</div>
         <div style="font-size:13px;color:#065F46;margin-top:8px">お名前</div>
         <div style="font-weight:700">${escapeHtml(res.name)}</div>
         ${res.memo ? `<div style="font-size:13px;color:#065F46;margin-top:8px">メモ</div><div style="white-space:pre-wrap">${escapeHtml(res.memo)}</div>` : ''}
       </div>
+      ${calendarAddHtml()}
       ${meetingHtml}
       ${locationHtml}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -526,6 +615,7 @@ async function renderCancelScreen(){
         <button class="btn btn-danger" id="btn-do-cancel">予約をキャンセル</button>
       </div>
     </div>`;
+  wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken);
   document.getElementById('btn-do-cancel').addEventListener('click', async () => {
     if (!confirm('この予約をキャンセルしますか？')) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
