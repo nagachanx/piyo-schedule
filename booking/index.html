@@ -259,7 +259,7 @@
   </div>
 
   <div id="screen-deleted" hidden class="center-msg">
-    <div style="font-size:48px;margin-bottom:14px">📭</div>
+    <div style="margin-bottom:14px;color:var(--text-4);display:flex;justify-content:center"><svg style="width:48px;height:48px;stroke-width:1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="16" x2="15" y2="16"/></svg></div>
     <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:6px">このイベントは終了しました</div>
     <div>イベントが削除されたか、URLが正しくありません。</div>
   </div>
@@ -706,14 +706,14 @@ function showCompletion(slot, startsAt, endsAt, name, token){
   const cancelUrl = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(token);
   let meetingHtml = '';
   if (ev.meeting_url && /^https?:\/\//.test(ev.meeting_url)) {
-    meetingHtml = `<div class="meeting-card"><div class="head">🎥 ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
+    meetingHtml = `<div class="meeting-card"><div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
   }
   let locationHtml = '';
   if (ev.location) {
-    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px">📍 場所</div><div>${escapeHtml(ev.location)}</div></div>`;
+    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>場所</div><div>${escapeHtml(ev.location)}</div></div>`;
   }
   showModal(`
-    <h2>✅ 予約が完了しました</h2>
+    <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:var(--primary-dk)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>予約が完了しました</h2>
     <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:14px;margin-bottom:14px">
       <div style="font-size:13px;color:#065F46;margin-bottom:4px">予約日時</div>
       <div style="font-weight:700;font-size:16px">${fmtDateTime(startsAt)}–${fmtTime(endsAt)}</div>
@@ -724,7 +724,7 @@ function showCompletion(slot, startsAt, endsAt, name, token){
     ${meetingHtml}
     ${locationHtml}
     <div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:6px">🔗 予約管理URL（キャンセル用）</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>予約管理URL（キャンセル用）</div>
       <div class="url-box"><input readonly value="${escapeHtml(cancelUrl)}"></div>
       <div style="font-size:11px;color:var(--text-3);margin-top:6px">このURLでいつでもキャンセル・確認できます。控えとして保存してください。</div>
       <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url">URLをコピー</button>
@@ -765,11 +765,11 @@ async function renderCancelScreen(){
   const endsAt = new Date(startsAt.getTime() + ev.slot_duration_min * 60000);
   let meetingHtml = '';
   if (ev.meeting_url && /^https?:\/\//.test(ev.meeting_url)) {
-    meetingHtml = `<div class="meeting-card"><div class="head">🎥 ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
+    meetingHtml = `<div class="meeting-card"><div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
   }
   let locationHtml = '';
   if (ev.location) {
-    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px">📍 場所</div><div>${escapeHtml(ev.location)}</div></div>`;
+    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>場所</div><div>${escapeHtml(ev.location)}</div></div>`;
   }
   sc.innerHTML = `
     <div class="card">
@@ -797,7 +797,7 @@ async function renderCancelScreen(){
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
     if (error) { showAlert('error', 'キャンセル失敗：' + error.message); return; }
     sc.innerHTML = `<div class="card center-msg">
-      <div style="font-size:48px;margin-bottom:14px">✅</div>
+      <div style="margin-bottom:14px;color:var(--primary-dk);display:flex;justify-content:center"><svg style="width:48px;height:48px;stroke-width:2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
       <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:6px">キャンセル済み</div>
       <div style="margin-bottom:18px">予約をキャンセルしました。</div>
       <a href="?id=${encodeURIComponent(state.eventId)}" class="btn">← 予約画面へ戻る</a>
