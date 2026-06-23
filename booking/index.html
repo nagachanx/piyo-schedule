@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>予約フォーム</title>
+  <link rel="icon" href="../piyo-favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../piyo-theme.css">
+  <script src="../piyo-theme.js"></script>
+  <script src="../piyo-config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#F5F5F4; --surface:#FFFFFF; --border:#E7E5E4; --border-strong:#D6D3D1;
+      --text-1:#1C1917; --text-2:#44403C; --text-3:#78716C; --text-4:#A8A29E;
+      --primary:#43A86A; --primary-dk:#2D8D57; --primary-lt:#C5E5D1; --primary-bg:#EEF7F1;
+      --danger:#DC2626; --danger-bg:#FEF2F2;
+      --radius-card:14px; --radius:8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', 'Noto Sans JP', -apple-system, sans-serif; background: var(--bg); min-height: 100vh; color: var(--text-1); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .topbar-inner { max-width: 1100px; width: 100%; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 56px; height: 56px; flex-shrink: 0; }
+    .brand-logo svg { width: 56px; height: 56px; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.15; gap: 4px; }
+    .brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+    .brand-sub { font-size: 12px; color: var(--text-3); }
+    @media (max-width: 640px) {
+      .topbar-inner { padding: 10px 16px; gap: 8px; }
+      .brand-logo, .brand-logo svg { width: 40px; height: 40px; }
+      .brand-name { font-size: 18px; }
+      .brand-sub { display: none; }
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px 80px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+    .event-title { font-size: 24px; font-weight: 800; margin: 0 0 6px; }
+    .event-desc { color: var(--text-3); font-size: 14px; white-space: pre-wrap; }
+    .event-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); margin-top: 10px; }
+
+    .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
+    .alert.success { background: #ECFDF5; color: #065F46; border: 1px solid #BBF7D0; }
+    .alert.error { background: var(--danger-bg); color: #991B1B; border: 1px solid #FECACA; }
+    .alert.info { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .field label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+    .field input[type="text"], .field textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit; background: #fff; color: inherit;
+    }
+    .field textarea { min-height: 80px; resize: vertical; }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67,168,106,0.18); }
+
+    .btn { padding: 10px 18px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-weight: 600; font-size: 13px; cursor: pointer; background: #fff; color: var(--text-1); font-family: inherit; }
+    .btn:hover:not(:disabled) { background: #F5F5F4; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #5BB585 0%, #43A86A 50%, #2D8D57 100%); color: #fff; border: none; padding: 12px 28px; font-size: 15px; box-shadow: 0 2px 4px rgba(67,168,106,0.25); }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.06); }
+    .btn-danger { background: #fff; color: var(--danger); border-color: #FECACA; }
+    .btn-danger:hover:not(:disabled) { background: var(--danger-bg); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* Calendar */
+    .cal-toolbar { display: flex; gap: 8px; align-items: center; margin: 18px 0 10px; flex-wrap: wrap; }
+    .cal-toolbar .week-label { font-weight: 700; font-size: 15px; margin: 0 8px; }
+    .cal-grid { display: grid; grid-template-columns: 56px repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-width: 720px; }
+    .cal-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); }
+    .cal-head { background: #FAFAF9; padding: 8px 4px; font-size: 12px; font-weight: 700; text-align: center; color: var(--text-2); border-bottom: 1px solid var(--border); }
+    .cal-head.today { background: #FEF3C7; color: #92400E; }
+    .cal-head .dow { display: block; font-size: 11px; color: var(--text-3); font-weight: 600; }
+    .cal-time { background: #FAFAF9; padding: 4px; font-size: 11px; font-weight: 600; text-align: right; color: var(--text-3); padding-right: 8px; }
+    .cal-cell { background: #fff; min-height: 38px; padding: 2px; position: relative; }
+    .cal-cell .slot { background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: 6px; padding: 3px 6px; font-size: 11px; font-weight: 700; color: var(--primary-dk); text-align: center; cursor: pointer; transition: all 0.12s; }
+    .cal-cell .slot:hover:not(.full):not(.past) { background: var(--primary); color: #fff; }
+    .cal-cell .slot.full { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
+    .cal-cell .slot.past { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
+
+    @media (max-width: 760px) {
+      .cal-grid { display: none; }
+      .cal-mobile { display: block; }
+    }
+    .cal-mobile { display: none; }
+    .cal-day { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+    .cal-day-head { background: #FAFAF9; padding: 10px 14px; font-weight: 700; font-size: 13px; }
+    .cal-day-head.today { background: #FEF3C7; color: #92400E; }
+    .cal-day-slots { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .cal-day-slot { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--primary-lt); border-radius: var(--radius); background: var(--primary-bg); cursor: pointer; }
+    .cal-day-slot:hover:not(.full):not(.past) { background: var(--primary); color: #fff; }
+    .cal-day-slot.full, .cal-day-slot.past { background: #F3F4F6; border-color: var(--border-strong); color: var(--text-4); cursor: not-allowed; }
+    .cal-day-slot .time { font-weight: 700; font-size: 14px; }
+    .cal-day-slot .right { font-size: 12px; font-weight: 600; }
+
+    /* Modal */
+    .modal-back { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+    .modal-back[hidden] { display: none; }
+    .modal { background: #fff; border-radius: var(--radius-card); padding: 22px; max-width: 480px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.22); max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: 18px; font-weight: 800; margin: 0 0 12px; }
+    .modal .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+
+    .url-box { display: flex; gap: 6px; align-items: center; background: #FAFAF9; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 8px; }
+    .url-box input { flex: 1; background: transparent; border: none; font-size: 12px; color: var(--text-1); font-family: monospace; min-width: 0; }
+    .url-box input:focus { outline: none; }
+
+    .meeting-card { background: var(--primary-bg); border: 1px solid var(--primary-lt); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
+    .meeting-card .head { font-size: 12px; font-weight: 700; color: var(--primary-dk); margin-bottom: 4px; }
+    .meeting-card a { color: var(--primary-dk); font-weight: 700; word-break: break-all; }
+
+    footer { max-width: 1100px; margin: 24px auto; padding: 20px 24px; color: var(--text-4); font-size: 12px; text-align: center; }
+
+    .center-msg { text-align: center; padding: 60px 16px; color: var(--text-3); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header class="topbar" role="banner">
+  <div class="topbar-inner">
+    <div class="brand-logo" aria-hidden="true">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 9 C19 5 18 1 21 1 C22.5 1 23 4 24 9 Z" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.1" stroke-linejoin="round"/>
+        <path d="M24 9 C29 5 30 1 27 1 C25.5 1 25 4 24 9 Z" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.1" stroke-linejoin="round"/>
+        <circle cx="24" cy="28" r="19" fill="#FCD34D" stroke="#3D2F1F" stroke-width="1.2"/>
+        <clipPath id="piyoBody"><circle cx="24" cy="28" r="18"/></clipPath>
+        <rect x="0" y="15" width="48" height="22" fill="#F5EFE0" clip-path="url(#piyoBody)"/>
+        <path d="M20 19.5 Q19 19.8 18 20.5" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+        <path d="M28 19.5 Q29 19.8 30 20.5" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+        <circle class="piyo-eye" cx="15.5" cy="28" r="1.5" fill="#3D2F1F"/>
+        <circle class="piyo-eye" cx="32.5" cy="28" r="1.5" fill="#3D2F1F"/>
+        <path d="M24 25 Q18 28 19.5 32 Q24 34.2 28.5 32 Q30 28 24 25 Z" fill="#FCD34D"/>
+        <path d="M19.5 32 Q24 34.2 28.5 32" stroke="#3D2F1F" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">予約フォーム</span>
+      <span class="brand-sub">ぴよツールズ</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div id="alert-area"></div>
+
+  <div id="screen-loading" class="center-msg">読み込み中…</div>
+
+  <div id="screen-cancel" hidden></div>
+
+  <div id="screen-main" hidden>
+    <div class="card">
+      <h1 id="ev-title" class="event-title">—</h1>
+      <div id="ev-desc" class="event-desc"></div>
+      <div class="event-meta">
+        <span>🕐 1枠 <span id="ev-duration"></span>分</span>
+      </div>
+    </div>
+
+    <div class="cal-toolbar">
+      <button class="btn btn-sm" id="cal-prev">← 前週</button>
+      <span class="week-label" id="cal-week-label">—</span>
+      <button class="btn btn-sm" id="cal-next">翌週 →</button>
+      <button class="btn btn-sm" id="cal-today">今週</button>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;color:var(--text-3)">空き枠を選んで予約してください</span>
+    </div>
+
+    <div class="cal-wrap">
+      <div id="cal-grid" class="cal-grid"></div>
+    </div>
+    <div id="cal-mobile" class="cal-mobile"></div>
+  </div>
+
+  <div id="screen-deleted" hidden class="center-msg">
+    <div style="font-size:48px;margin-bottom:14px">📭</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:6px">このイベントは終了しました</div>
+    <div>イベントが削除されたか、URLが正しくありません。</div>
+  </div>
+</div>
+
+<div id="modal" class="modal-back" hidden>
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<footer>
+  ぴよツールズ 予約フォーム
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL      = (window.PIYO_CONFIG && window.PIYO_CONFIG.SUPABASE_URL) || '';
+const SUPABASE_ANON_KEY = (window.PIYO_CONFIG && window.PIYO_CONFIG.SUPABASE_ANON_KEY) || '';
+const supa = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+const DOW_JP = ['日','月','火','水','木','金','土'];
+const PAD = n => String(n).padStart(2,'0');
+function startOfWeek(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - x.getDay()); return x; }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function fmtMD(d){ return `${PAD(d.getMonth()+1)}/${PAD(d.getDate())}`; }
+function fmtTime(d){ return `${PAD(d.getHours())}:${PAD(d.getMinutes())}`; }
+function fmtDateTime(d){ return `${fmtMD(d)}(${DOW_JP[d.getDay()]}) ${fmtTime(d)}`; }
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function genToken(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+const state = { eventId: null, cancelToken: null, event: null, weekStart: startOfWeek(new Date()), slots: [], resCounts: {} };
+
+function showAlert(type, msg){
+  const el = document.createElement('div');
+  el.className = 'alert ' + type;
+  el.textContent = msg;
+  const area = document.getElementById('alert-area');
+  area.innerHTML = '';
+  area.appendChild(el);
+}
+function showModal(html){
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').hidden = false;
+}
+function hideModal(){ document.getElementById('modal').hidden = true; }
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') hideModal();
+});
+
+// localStorage：自分の予約履歴
+const MY_KEY = 'piyo-booking-mine';
+function getMine(){ try { return JSON.parse(localStorage.getItem(MY_KEY) || '{}'); } catch { return {}; } }
+function setMine(eventId, data){
+  const m = getMine();
+  m[eventId] = data;
+  localStorage.setItem(MY_KEY, JSON.stringify(m));
+}
+
+// ─── 初期化 ───
+const params = new URLSearchParams(location.search);
+state.eventId = params.get('id');
+state.cancelToken = params.get('t');
+
+if (!state.eventId) {
+  document.getElementById('screen-loading').hidden = true;
+  document.getElementById('screen-deleted').hidden = false;
+} else {
+  loadEvent();
+}
+
+async function loadEvent(){
+  if (!supa) {
+    showAlert('error', 'Supabase接続情報が未設定です');
+    document.getElementById('screen-loading').hidden = true;
+    return;
+  }
+  const { data: ev, error } = await supa.from('bookings').select('*').eq('id', state.eventId).maybeSingle();
+  if (error || !ev) {
+    document.getElementById('screen-loading').hidden = true;
+    document.getElementById('screen-deleted').hidden = false;
+    return;
+  }
+  state.event = ev;
+  document.title = `${ev.title} — 予約フォーム`;
+
+  // キャンセルトークン付きアクセス → キャンセル画面
+  if (state.cancelToken) {
+    await renderCancelScreen();
+    return;
+  }
+
+  // 通常表示
+  document.getElementById('ev-title').textContent = ev.title;
+  document.getElementById('ev-desc').textContent = ev.description || '';
+  document.getElementById('ev-duration').textContent = ev.slot_duration_min;
+  document.getElementById('screen-loading').hidden = true;
+  document.getElementById('screen-main').hidden = false;
+  await loadSlots();
+}
+
+async function loadSlots(){
+  const { data: slots } = await supa.from('booking_slots').select('*').eq('booking_id', state.eventId).order('starts_at');
+  state.slots = slots || [];
+  const ids = state.slots.map(s => s.id);
+  state.resCounts = {};
+  if (ids.length) {
+    const { data: res } = await supa.from('booking_reservations').select('slot_id').in('slot_id', ids);
+    (res || []).forEach(r => { state.resCounts[r.slot_id] = (state.resCounts[r.slot_id] || 0) + 1; });
+  }
+  renderCalendar();
+}
+
+function findSlot(d){ return state.slots.find(s => new Date(s.starts_at).getTime() === d.getTime()); }
+function isFull(slot){ return (state.resCounts[slot.id] || 0) >= slot.capacity; }
+
+function renderCalendar(){
+  const dur = state.event.slot_duration_min;
+  const startHour = 9, endHour = 19;
+  const slotsPerHour = 60 / dur;
+  const ws = state.weekStart;
+  const we = addDays(ws, 6);
+  document.getElementById('cal-week-label').textContent = `${fmtMD(ws)} 〜 ${fmtMD(we)}`;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const now = new Date();
+  // ヘッダ
+  const empty = document.createElement('div'); empty.className='cal-head'; grid.appendChild(empty);
+  for (let i=0;i<7;i++){
+    const d = addDays(ws, i);
+    const head = document.createElement('div');
+    head.className = 'cal-head' + (sameDay(d, now) ? ' today' : '');
+    head.innerHTML = `${fmtMD(d)}<span class="dow">${DOW_JP[d.getDay()]}</span>`;
+    grid.appendChild(head);
+  }
+  for (let h=startHour; h<endHour; h++){
+    for (let s=0;s<slotsPerHour;s++){
+      const mins = s * dur;
+      const t = document.createElement('div'); t.className='cal-time'; t.textContent = `${PAD(h)}:${PAD(mins)}`;
+      grid.appendChild(t);
+      for (let dd=0; dd<7; dd++){
+        const day = addDays(ws, dd);
+        const cellStart = new Date(day); cellStart.setHours(h, mins, 0, 0);
+        const cell = document.createElement('div'); cell.className = 'cal-cell';
+        const slot = findSlot(cellStart);
+        if (slot) {
+          const isPast = cellStart < now;
+          const full = isFull(slot);
+          const slotEl = document.createElement('div');
+          slotEl.className = 'slot' + (full ? ' full' : '') + (isPast ? ' past' : '');
+          const count = state.resCounts[slot.id] || 0;
+          if (isPast) slotEl.textContent = '終了';
+          else if (full) slotEl.textContent = '満席';
+          else if (slot.capacity === 1) slotEl.textContent = '◯';
+          else slotEl.textContent = `残${slot.capacity - count}`;
+          if (!isPast && !full) slotEl.addEventListener('click', () => openReserveDialog(slot, cellStart));
+          cell.appendChild(slotEl);
+        }
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  // モバイル
+  const mob = document.getElementById('cal-mobile');
+  mob.innerHTML = '';
+  for (let dd=0; dd<7; dd++){
+    const day = addDays(ws, dd);
+    const dayBox = document.createElement('div'); dayBox.className = 'cal-day';
+    const head = document.createElement('div');
+    head.className = 'cal-day-head' + (sameDay(day, now) ? ' today' : '');
+    head.textContent = `${fmtMD(day)}（${DOW_JP[day.getDay()]}）`;
+    dayBox.appendChild(head);
+    const slotsBox = document.createElement('div'); slotsBox.className = 'cal-day-slots';
+    const daySlots = state.slots.filter(s => sameDay(new Date(s.starts_at), day)).sort((a,b) => new Date(a.starts_at) - new Date(b.starts_at));
+    if (!daySlots.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:10px;color:var(--text-3);font-size:12px;text-align:center';
+      empty.textContent = '空き枠なし';
+      slotsBox.appendChild(empty);
+    } else {
+      daySlots.forEach(slot => {
+        const startsAt = new Date(slot.starts_at);
+        const isPast = startsAt < now;
+        const full = isFull(slot);
+        const row = document.createElement('div');
+        row.className = 'cal-day-slot' + (full ? ' full' : '') + (isPast ? ' past' : '');
+        const t = document.createElement('span'); t.className='time'; t.textContent = fmtTime(startsAt);
+        const right = document.createElement('span'); right.className='right';
+        const count = state.resCounts[slot.id] || 0;
+        if (isPast) right.textContent = '終了';
+        else if (full) right.textContent = '満席';
+        else if (slot.capacity === 1) right.textContent = '空き';
+        else right.textContent = `残り ${slot.capacity - count} 名`;
+        row.appendChild(t); row.appendChild(right);
+        if (!isPast && !full) row.addEventListener('click', () => openReserveDialog(slot, startsAt));
+        slotsBox.appendChild(row);
+      });
+    }
+    dayBox.appendChild(slotsBox);
+    mob.appendChild(dayBox);
+  }
+}
+
+function openReserveDialog(slot, startsAt){
+  const endsAt = new Date(startsAt.getTime() + state.event.slot_duration_min * 60000);
+  showModal(`
+    <h2>${fmtDateTime(startsAt)}–${fmtTime(endsAt)} を予約</h2>
+    <div class="field">
+      <label>お名前 <span style="color:var(--danger)">*</span></label>
+      <input id="rsv-name" type="text" maxlength="30" placeholder="例：田中太郎">
+    </div>
+    <div class="field">
+      <label>メモ（任意）</label>
+      <textarea id="rsv-memo" maxlength="500" placeholder="ご相談内容など"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-modal-close>キャンセル</button>
+      <button class="btn-primary" id="rsv-submit">予約する</button>
+    </div>
+  `);
+  document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
+  document.getElementById('rsv-name').focus();
+  document.getElementById('rsv-submit').addEventListener('click', () => submitReservation(slot, startsAt, endsAt));
+}
+
+async function submitReservation(slot, startsAt, endsAt){
+  const name = document.getElementById('rsv-name').value.trim();
+  const memo = document.getElementById('rsv-memo').value.trim();
+  if (!name) { alert('お名前を入力してください'); return; }
+  const submitBtn = document.getElementById('rsv-submit');
+  submitBtn.disabled = true;
+
+  // 直前に最新の予約数を再フェッチ（簡易race対策）
+  const { data: cur } = await supa.from('booking_reservations').select('id', { count: 'exact', head: false }).eq('slot_id', slot.id);
+  const currentCount = (cur || []).length;
+  if (currentCount >= slot.capacity) {
+    submitBtn.disabled = false;
+    hideModal();
+    showAlert('error', '申し訳ありません、既に満席になりました。別の枠をお選びください。');
+    await loadSlots();
+    return;
+  }
+  const token = genToken();
+  const { data, error } = await supa.from('booking_reservations').insert({
+    slot_id: slot.id, name, memo: memo || null, cancel_token: token
+  }).select().single();
+  submitBtn.disabled = false;
+  if (error) { showAlert('error', '予約に失敗：' + error.message); return; }
+
+  setMine(state.eventId, { reservationId: data.id, slotId: slot.id, token, startsAt: startsAt.toISOString(), name });
+
+  // 予約完了画面へ
+  hideModal();
+  showCompletion(slot, startsAt, endsAt, name, token);
+  await loadSlots();
+}
+
+function showCompletion(slot, startsAt, endsAt, name, token){
+  const ev = state.event;
+  const cancelUrl = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(token);
+  let meetingHtml = '';
+  if (ev.meeting_url && /^https?:\/\//.test(ev.meeting_url)) {
+    meetingHtml = `<div class="meeting-card"><div class="head">🎥 ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
+  }
+  let locationHtml = '';
+  if (ev.location) {
+    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px">📍 場所</div><div>${escapeHtml(ev.location)}</div></div>`;
+  }
+  showModal(`
+    <h2>✅ 予約が完了しました</h2>
+    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;color:#065F46;margin-bottom:4px">予約日時</div>
+      <div style="font-weight:700;font-size:16px">${fmtDateTime(startsAt)}–${fmtTime(endsAt)}</div>
+      <div style="font-size:13px;color:#065F46;margin-top:8px">お名前</div>
+      <div style="font-weight:700">${escapeHtml(name)}</div>
+    </div>
+    ${meetingHtml}
+    ${locationHtml}
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#78350F;margin-bottom:6px">🔗 予約管理URL（キャンセル用）</div>
+      <div class="url-box"><input readonly value="${escapeHtml(cancelUrl)}"></div>
+      <div style="font-size:11px;color:#78350F;margin-top:6px">このURLでいつでもキャンセル・確認できます。控えとして保存してください。</div>
+      <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url">URLをコピー</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" data-modal-close>閉じる</button>
+    </div>
+  `);
+  document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
+  document.getElementById('copy-cancel-url').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(cancelUrl); document.getElementById('copy-cancel-url').textContent = 'コピー済み✓'; }
+    catch {}
+  });
+}
+
+async function renderCancelScreen(){
+  document.getElementById('screen-loading').hidden = true;
+  const { data: res } = await supa.from('booking_reservations').select('*').eq('cancel_token', state.cancelToken).maybeSingle();
+  const sc = document.getElementById('screen-cancel');
+  sc.hidden = false;
+  if (!res) {
+    sc.innerHTML = `<div class="card">
+      <h1 class="event-title">予約が見つかりません</h1>
+      <p class="event-desc">この予約は既にキャンセルされているか、URLが無効です。</p>
+      <div style="margin-top:14px"><a href="?id=${encodeURIComponent(state.eventId)}" class="btn">← 予約画面へ</a></div>
+    </div>`;
+    return;
+  }
+  const { data: slot } = await supa.from('booking_slots').select('*').eq('id', res.slot_id).maybeSingle();
+  if (!slot) {
+    sc.innerHTML = `<div class="card"><h1 class="event-title">予約が見つかりません</h1></div>`;
+    return;
+  }
+  const ev = state.event;
+  const startsAt = new Date(slot.starts_at);
+  const endsAt = new Date(startsAt.getTime() + ev.slot_duration_min * 60000);
+  let meetingHtml = '';
+  if (ev.meeting_url && /^https?:\/\//.test(ev.meeting_url)) {
+    meetingHtml = `<div class="meeting-card"><div class="head">🎥 ミーティングURL</div><a href="${escapeHtml(ev.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(ev.meeting_url)}</a></div>`;
+  }
+  let locationHtml = '';
+  if (ev.location) {
+    locationHtml = `<div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px">📍 場所</div><div>${escapeHtml(ev.location)}</div></div>`;
+  }
+  sc.innerHTML = `
+    <div class="card">
+      <h1 class="event-title">あなたの予約</h1>
+      <p class="event-desc">${escapeHtml(ev.title)}</p>
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:14px;margin-top:14px">
+        <div style="font-size:13px;color:#065F46;margin-bottom:4px">予約日時</div>
+        <div style="font-weight:700;font-size:16px">${fmtDateTime(startsAt)}–${fmtTime(endsAt)}</div>
+        <div style="font-size:13px;color:#065F46;margin-top:8px">お名前</div>
+        <div style="font-weight:700">${escapeHtml(res.name)}</div>
+        ${res.memo ? `<div style="font-size:13px;color:#065F46;margin-top:8px">メモ</div><div style="white-space:pre-wrap">${escapeHtml(res.memo)}</div>` : ''}
+      </div>
+      ${meetingHtml}
+      ${locationHtml}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <a href="?id=${encodeURIComponent(state.eventId)}" class="btn">← 予約画面へ</a>
+        <button class="btn btn-danger" id="btn-do-cancel">予約をキャンセル</button>
+      </div>
+    </div>`;
+  document.getElementById('btn-do-cancel').addEventListener('click', async () => {
+    if (!confirm('この予約をキャンセルしますか？')) return;
+    const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
+    if (error) { showAlert('error', 'キャンセル失敗：' + error.message); return; }
+    sc.innerHTML = `<div class="card center-msg">
+      <div style="font-size:48px;margin-bottom:14px">✅</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:6px">キャンセル済み</div>
+      <div style="margin-bottom:18px">予約をキャンセルしました。</div>
+      <a href="?id=${encodeURIComponent(state.eventId)}" class="btn">← 予約画面へ戻る</a>
+    </div>`;
+  });
+}
+
+// ─── ツールバー ───
+document.getElementById('cal-prev').addEventListener('click', () => { state.weekStart = addDays(state.weekStart, -7); renderCalendar(); });
+document.getElementById('cal-next').addEventListener('click', () => { state.weekStart = addDays(state.weekStart, 7); renderCalendar(); });
+document.getElementById('cal-today').addEventListener('click', () => { state.weekStart = startOfWeek(new Date()); renderCalendar(); });
+</script>
+
+</body>
+</html>
