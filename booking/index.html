@@ -410,8 +410,8 @@ async function loadEvent(){
   } else {
     capChip.hidden = true;
   }
-  // セル高さを時間に比例（15分=11px、30分=22px、45分=33px、60分=44px）— 縦幅をコンパクトに
-  document.documentElement.style.setProperty('--cal-cell-min-h', ((ev.slot_duration_min / 15) * 11) + 'px');
+  // セル高さを時間に比例（15分=12px、30分=24px、45分=36px、60分=48px）— 約+10%拡幅
+  document.documentElement.style.setProperty('--cal-cell-min-h', ((ev.slot_duration_min / 15) * 12) + 'px');
   document.getElementById('screen-loading').hidden = true;
   document.getElementById('screen-main').hidden = false;
   await loadSlots();
