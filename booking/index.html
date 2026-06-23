@@ -434,7 +434,7 @@ function isFull(slot){ return (state.resCounts[slot.id] || 0) >= slot.capacity; 
 
 function renderCalendar(){
   const dur = state.event.slot_duration_min;
-  const startHour = 9, endHour = 19;
+  const startHour = 8, endHour = 20;
   const slotsPerHour = 60 / dur;
   const ws = state.weekStart;
   const we = addDays(ws, 6);
