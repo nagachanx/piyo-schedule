@@ -571,10 +571,45 @@ async function submitReservation(slot, startsAt, endsAt){
 
   setMine(state.eventId, { reservationId: data.id, slotId: slot.id, token, startsAt: startsAt.toISOString(), name });
 
+  // 主催者へメール通知（Power Automate経由・失敗しても予約は成立）
+  notifyOrganizer(slot, startsAt, endsAt, name, memo).catch(() => {});
+
   // 予約完了画面へ
   hideModal();
   showCompletion(slot, startsAt, endsAt, name, token);
   await loadSlots();
+}
+
+// 主催者へ予約通知メール（Power Automate Webhook 経由）
+async function notifyOrganizer(slot, startsAt, endsAt, name, memo){
+  const ev = state.event;
+  const notifyUrl = window.PIYO_CONFIG && window.PIYO_CONFIG.BOOKING_NOTIFY_URL;
+  if (!notifyUrl || !ev.notify_email) return;  // 未設定なら何もしない
+
+  const subject = `【予約フォーム】「${ev.title}」に新規予約 - ${name}さま`;
+  const lines = [
+    '新しい予約が入りました。',
+    '',
+    `■ イベント：${ev.title}`,
+    `■ 日時：${fmtDateTime(startsAt)}〜${fmtTime(endsAt)}`,
+    `■ お名前：${name}`,
+  ];
+  if (memo) lines.push(`■ メモ：${memo}`);
+  if (ev.location) lines.push(`■ 場所：${ev.location}`);
+  if (ev.meeting_url) lines.push(`■ ミーティングURL：${ev.meeting_url}`);
+  lines.push('', '▼ 管理画面で予約一覧を確認');
+  lines.push(`https://nagachanx.github.io/piyo-tools/booking.html?id=${ev.id}`);
+  const body = lines.join('\n');
+
+  try {
+    await fetch(notifyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: ev.notify_email, subject, body })
+    });
+  } catch (e) {
+    console.warn('通知メール送信失敗:', e);
+  }
 }
 
 function showCompletion(slot, startsAt, endsAt, name, token){
