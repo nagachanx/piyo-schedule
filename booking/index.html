@@ -122,6 +122,19 @@
     .meeting-card .head { font-size: 12px; font-weight: 700; color: var(--primary-dk); margin-bottom: 4px; }
     .meeting-card a { color: var(--primary-dk); font-weight: 700; word-break: break-all; }
 
+    /* カレンダー追加（強調表示） */
+    .cal-add-card { background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); padding: 14px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(67,168,106,0.12); }
+    .cal-add-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .cal-add-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+    .cal-add-title { font-size: 14px; font-weight: 800; color: var(--primary-dk); margin-bottom: 2px; }
+    .cal-add-desc { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+    .cal-add-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-cal-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); padding: 8px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius); cursor: pointer; text-decoration: none; transition: all 0.12s; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-cal-primary:hover { background: var(--primary-dk); border-color: var(--primary-dk); }
+    .btn-cal-secondary { background: #fff; color: var(--primary-dk); border: 1px solid var(--primary-lt); padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+    .btn-cal-secondary:hover { background: var(--primary-bg); border-color: var(--primary); }
+    .cal-add-hint { font-size: 11px; color: var(--text-3); margin-top: 8px; line-height: 1.5; }
+
     footer { max-width: 1100px; margin: 24px auto; padding: 20px 24px; color: var(--text-4); font-size: 12px; text-align: center; }
 
     .center-msg { text-align: center; padding: 60px 16px; color: var(--text-3); font-size: 14px; }
@@ -166,6 +179,13 @@
     html[data-theme="dark"] .meeting-card { background: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.32); }
     html[data-theme="dark"] .meeting-card .head,
     html[data-theme="dark"] .meeting-card a { color: #BBF7D0; }
+    /* カレンダー追加（強調表示） */
+    html[data-theme="dark"] .cal-add-card { background: rgba(74, 222, 128, 0.10); border-color: rgba(74, 222, 128, 0.50); box-shadow: 0 2px 8px rgba(74,222,128,0.10); }
+    html[data-theme="dark"] .cal-add-title { color: #BBF7D0; }
+    html[data-theme="dark"] .btn-cal-primary { background: var(--primary); color: #0B1410; border-color: var(--primary); }
+    html[data-theme="dark"] .btn-cal-primary:hover { background: #4ADE80; border-color: #4ADE80; }
+    html[data-theme="dark"] .btn-cal-secondary { background: var(--surface); color: #BBF7D0; border-color: rgba(74, 222, 128, 0.35); }
+    html[data-theme="dark"] .btn-cal-secondary:hover { background: rgba(74, 222, 128, 0.12); border-color: var(--primary); }
     /* URLボックス */
     html[data-theme="dark"] .url-box { background: #2A2A2D; border-color: var(--border-strong); }
     html[data-theme="dark"] .url-box input { color: var(--text-1); }
@@ -368,14 +388,20 @@ function downloadIcs(ics, filename){
 }
 function calendarAddHtml(){
   return `
-    <div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px">📅 自分のカレンダーに追加</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <a class="btn btn-sm" data-cal="outlook" href="#" target="_blank" rel="noopener">Outlook</a>
-        <a class="btn btn-sm" data-cal="google"  href="#" target="_blank" rel="noopener">Google</a>
-        <button class="btn btn-sm" data-cal="ics">.ics でダウンロード</button>
+    <div class="cal-add-card">
+      <div class="cal-add-head">
+        <span class="cal-add-icon">📅</span>
+        <div>
+          <div class="cal-add-title">カレンダーに追加してください</div>
+          <div class="cal-add-desc">当日忘れないように、ご自身のカレンダーに登録しておきましょう。</div>
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--text-3);margin-top:6px">Outlook は職場アカウント用。Apple カレンダーは .ics をダウンロードしてください。</div>
+      <div class="cal-add-buttons">
+        <a class="btn btn-cal-primary" data-cal="outlook" href="#" target="_blank" rel="noopener">📧 Outlook に追加</a>
+        <a class="btn btn-cal-primary" data-cal="google"  href="#" target="_blank" rel="noopener">🗓 Google に追加</a>
+        <button class="btn btn-cal-secondary" data-cal="ics">.ics ダウンロード</button>
+      </div>
+      <div class="cal-add-hint">※ Outlook は職場アカウント用。Apple カレンダー利用の方は .ics をダウンロードしてください。</div>
     </div>`;
 }
 function wireCalendarAdd(scope, title, desc, location, meetingUrl, startsAt, endsAt, uid, cancelUrl, attendeeEmail){
@@ -692,10 +718,10 @@ function showCompletion(slot, startsAt, endsAt, name, token){
     ${calendarAddHtml()}
     ${meetingHtml}
     ${locationHtml}
-    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);padding:12px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#78350F;margin-bottom:6px">🔗 予約管理URL（キャンセル用）</div>
+    <div style="background:#FAFAF9;border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:6px">🔗 予約管理URL（キャンセル用）</div>
       <div class="url-box"><input readonly value="${escapeHtml(cancelUrl)}"></div>
-      <div style="font-size:11px;color:#78350F;margin-top:6px">このURLでいつでもキャンセル・確認できます。控えとして保存してください。</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px">このURLでいつでもキャンセル・確認できます。控えとして保存してください。</div>
       <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url">URLをコピー</button>
     </div>
     <div class="modal-actions">
