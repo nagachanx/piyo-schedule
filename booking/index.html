@@ -951,6 +951,7 @@ async function renderCancelScreen(){
   if (ev.location) {
     locationHtml = `<div class="detail-card"><div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>場所</div><div class="body">${escapeHtml(ev.location)}</div></div>`;
   }
+  const cancelUrl2 = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(state.cancelToken);
   sc.innerHTML = `
     <div class="card">
       <h1 class="event-title">あなたの予約</h1>
@@ -966,13 +967,31 @@ async function renderCancelScreen(){
       ${calendarAddHtml()}
       ${meetingHtml}
       ${locationHtml}
+      <div class="detail-card share-section">
+        <div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>予約のURL</div>
+        <div class="url-box"><input readonly value="${escapeHtml(cancelUrl2)}"></div>
+        <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url-2">URLをコピー</button>
+        <div class="share-uses">
+          <div class="share-use">
+            <div class="share-use-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>自分用（キャンセル・確認）</div>
+            <div class="share-use-desc">このURLでいつでもキャンセル・予約内容の確認ができます。控えとして保存しておいてください。</div>
+          </div>
+          <div class="share-use">
+            <div class="share-use-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>他メンバーへの共有（招待）</div>
+            <div class="share-use-desc">同席するメンバーに送ると、日時・場所・ミーティングURLを見てもらえます。<strong style="color:var(--danger)">※共有された人もキャンセル操作ができるので、信頼できる相手にだけ送ってください。</strong></div>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
         <a href="?id=${encodeURIComponent(state.eventId)}" class="btn">← 予約画面へ</a>
         <button class="btn btn-danger" id="btn-do-cancel">予約をキャンセル</button>
       </div>
     </div>`;
-  const cancelUrl2 = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(state.cancelToken);
   wireCalendarAdd(sc, ev.title, ev.description, ev.location, ev.meeting_url, startsAt, endsAt, state.cancelToken, cancelUrl2, slot.created_by_email);
+  document.getElementById('copy-cancel-url-2').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(cancelUrl2); document.getElementById('copy-cancel-url-2').textContent = 'コピー済み✓'; }
+    catch {}
+  });
   document.getElementById('btn-do-cancel').addEventListener('click', async () => {
     if (!confirm('この予約をキャンセルしますか？')) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', state.cancelToken);
