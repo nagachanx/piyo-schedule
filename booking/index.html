@@ -152,6 +152,20 @@
     .detail-card.invite { background: var(--primary-bg); border-color: var(--primary-lt); }
     .detail-card.invite .head { color: var(--primary-dk); }
 
+    /* 予約リンクセクション（招待用 + 管理用を1枠に統合） */
+    .share-section { padding: 14px; }
+    .share-section .share-intro { font-size: 12px; color: var(--text-3); margin-bottom: 12px; line-height: 1.5; }
+    .share-row { }
+    .share-row-label { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+    .share-row-label svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .share-row-label strong { font-size: 13px; font-weight: 800; color: var(--text-1); }
+    .share-row-label-invite svg { color: var(--primary-dk); }
+    .share-row-label-invite strong { color: var(--primary-dk); }
+    .share-row-label-cancel svg { color: var(--text-3); }
+    .share-row-label-cancel strong { color: var(--text-2); }
+    .share-row-sub { font-size: 11px; color: var(--text-3); font-weight: 600; }
+    .share-divider { border-top: 1px solid var(--border); margin: 14px 0; }
+
     /* 同じブラウザの予約済みバナー（クイックキャンセル付き） */
     .own-reservation-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); margin-bottom: 14px; font-size: 13px; flex-wrap: wrap; }
     .own-reservation-info { flex: 1; min-width: 180px; }
@@ -221,6 +235,12 @@
     html[data-theme="dark"] .detail-card .body { color: var(--text-1); }
     html[data-theme="dark"] .detail-card.invite { background: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.32); }
     html[data-theme="dark"] .detail-card.invite .head { color: #BBF7D0; }
+    /* 予約リンクセクション（ダーク） */
+    html[data-theme="dark"] .share-row-label-invite svg,
+    html[data-theme="dark"] .share-row-label-invite strong { color: #BBF7D0; }
+    html[data-theme="dark"] .share-row-label-cancel svg { color: var(--text-3); }
+    html[data-theme="dark"] .share-row-label-cancel strong { color: var(--text-2); }
+    html[data-theme="dark"] .share-divider { border-top-color: var(--border); }
     /* 自分の予約バナー（ダーク） */
     html[data-theme="dark"] .own-reservation-banner { background: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.50); }
     html[data-theme="dark"] .own-reservation-title { color: #BBF7D0; }
@@ -828,17 +848,33 @@ function showCompletion(slot, startsAt, endsAt, name, token, reservationId){
     ${calendarAddHtml()}
     ${meetingHtml}
     ${locationHtml}
-    <div class="detail-card invite">
-      <div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>他のメンバーを招待するURL</div>
-      <div class="url-box"><input readonly value="${escapeHtml(inviteUrl)}"></div>
-      <div class="hint">日時・場所・ミーティングURLを共有できる読み取り専用URL。キャンセル機能は付かないので安心して共有できます。</div>
-      <button class="btn btn-sm" style="margin-top:8px" id="copy-invite-url">URLをコピー</button>
-    </div>
-    <div class="detail-card">
-      <div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>予約管理URL（キャンセル用）</div>
-      <div class="url-box"><input readonly value="${escapeHtml(cancelUrl)}"></div>
-      <div class="hint">このURLでいつでもキャンセル・確認できます。他人には共有せず、控えとして保存してください。</div>
-      <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url">URLをコピー</button>
+    <div class="detail-card share-section">
+      <div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>予約のリンク</div>
+      <p class="share-intro">この予約には2種類のURLがあります。用途に応じて使い分けてください。</p>
+
+      <div class="share-row">
+        <div class="share-row-label share-row-label-invite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <strong>招待用URL</strong>
+          <span class="share-row-sub">他のメンバーに共有してOK</span>
+        </div>
+        <div class="url-box"><input readonly value="${escapeHtml(inviteUrl)}"></div>
+        <div class="hint">📅 日時・場所・ミーティングURLが確認でき、自分のカレンダーにも追加できます。キャンセル機能は付かないので、安心して人に送れます。</div>
+        <button class="btn btn-sm" style="margin-top:8px" id="copy-invite-url">URLをコピー</button>
+      </div>
+
+      <div class="share-divider"></div>
+
+      <div class="share-row">
+        <div class="share-row-label share-row-label-cancel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <strong>予約管理URL</strong>
+          <span class="share-row-sub">自分用・キャンセル可</span>
+        </div>
+        <div class="url-box"><input readonly value="${escapeHtml(cancelUrl)}"></div>
+        <div class="hint">🔒 このURLでキャンセル・確認ができます。<strong style="color:var(--danger)">他人には共有せず</strong>、控えとして保存してください。</div>
+        <button class="btn btn-sm" style="margin-top:8px" id="copy-cancel-url">URLをコピー</button>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-primary" data-modal-close>閉じる</button>
