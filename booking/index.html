@@ -161,14 +161,15 @@
     .share-use-title svg { width: 14px; height: 14px; stroke-width: 2; color: var(--primary-dk); flex-shrink: 0; }
     .share-use-desc { font-size: 12px; color: var(--text-2); line-height: 1.55; }
 
-    /* 同じブラウザの予約済みバナー（複数予約対応・クイックキャンセル付き） */
-    #own-reservation-banners { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-    .own-reservation-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); font-size: 13px; flex-wrap: wrap; }
-    .own-reservation-info { flex: 1; min-width: 180px; }
-    .own-reservation-title { font-weight: 800; color: var(--primary-dk); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
-    .own-reservation-title svg { width: 14px; height: 14px; stroke-width: 2; }
-    .own-reservation-when { color: var(--text-2); font-size: 12px; }
-    .own-reservation-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    /* 同じブラウザの予約済みカード（複数予約は同一カード内に行として並べる） */
+    .own-reservations-card { background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; }
+    .own-reservations-head { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--primary-dk); margin-bottom: 10px; font-size: 13px; }
+    .own-reservations-head svg { width: 14px; height: 14px; stroke-width: 2; flex-shrink: 0; }
+    .own-reservations-head .count { font-weight: 600; color: var(--text-2); margin-left: 2px; font-size: 12px; }
+    .own-reservation-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.55); border: 1px solid rgba(67,168,106,0.22); border-radius: 6px; font-size: 13px; flex-wrap: wrap; }
+    .own-reservation-row + .own-reservation-row { margin-top: 6px; }
+    .own-reservation-row .when { flex: 1; min-width: 180px; color: var(--text-1); }
+    .own-reservation-row .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
     footer { max-width: 1100px; margin: 24px auto; padding: 20px 24px; color: var(--text-4); font-size: 12px; text-align: center; }
 
@@ -234,9 +235,12 @@
     /* 予約のURL（ダーク） */
     html[data-theme="dark"] .share-use { background: rgba(74, 222, 128, 0.08); border-left-color: rgba(74, 222, 128, 0.40); }
     html[data-theme="dark"] .share-use-title svg { color: #BBF7D0; }
-    /* 自分の予約バナー（ダーク） */
-    html[data-theme="dark"] .own-reservation-banner { background: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.50); }
-    html[data-theme="dark"] .own-reservation-title { color: #BBF7D0; }
+    /* 自分の予約カード（ダーク） */
+    html[data-theme="dark"] .own-reservations-card { background: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.50); }
+    html[data-theme="dark"] .own-reservations-head { color: #BBF7D0; }
+    html[data-theme="dark"] .own-reservations-head .count { color: var(--text-3); }
+    html[data-theme="dark"] .own-reservation-row { background: rgba(255, 255, 255, 0.04); border-color: rgba(74, 222, 128, 0.25); }
+    html[data-theme="dark"] .own-reservation-row .when { color: var(--text-1); }
     /* URLボックス */
     html[data-theme="dark"] .url-box { background: #2A2A2D; border-color: var(--border-strong); }
     html[data-theme="dark"] .url-box input { color: var(--text-1); }
@@ -586,74 +590,80 @@ async function loadSlots(){
   await checkOwnReservation();
 }
 
-// 同じブラウザで既に予約済みかチェックして、バナー表示（複数予約に対応）
+// 同じブラウザの予約済みカード（複数予約は同一カード内に行として並べる）
 async function checkOwnReservation(){
-  // 既存バナーコンテナをクリア
-  let container = document.getElementById('own-reservation-banners');
-  if (container) container.innerHTML = '';
+  // 既存カードをいったん削除
+  const existing = document.getElementById('own-reservations-card');
+  if (existing) existing.remove();
 
   const list = getMineForEvent(state.eventId);
-  if (!list.length) {
-    if (container) container.remove();
-    return;
-  }
+  if (!list.length) return;
 
-  // コンテナが無ければ作成して cal-toolbar の前に挿入
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'own-reservation-banners';
-    const main = document.getElementById('screen-main');
-    const toolbar = main.querySelector('.cal-toolbar');
-    main.insertBefore(container, toolbar);
-  }
-
-  // 各予約をDBで存在確認しながらバナー描画
+  // 有効な予約だけ集める（DB側で消えているものは localStorage からも除外）
+  const valid = [];
   for (const mine of list) {
     const { data: res } = await supa.from('booking_reservations').select('*').eq('id', mine.reservationId).maybeSingle();
-    if (!res) {
-      // DB側で削除済み → localStorageからも除外
-      removeMine(state.eventId, mine.reservationId);
-      continue;
-    }
+    if (!res) { removeMine(state.eventId, mine.reservationId); continue; }
     const slot = state.slots.find(s => s.id === res.slot_id);
     if (!slot) continue;
-    renderOwnReservationBanner(mine, res, slot, container);
+    valid.push({ mine, res, slot });
   }
+  if (!valid.length) return;
 
-  // 全部消えていたらコンテナごと削除
-  if (!container.children.length) container.remove();
+  // カード本体を作成
+  const card = document.createElement('div');
+  card.id = 'own-reservations-card';
+  card.className = 'own-reservations-card';
+  const countLabel = valid.length > 1 ? `<span class="count">（${valid.length}件）</span>` : '';
+  card.innerHTML = `
+    <div class="own-reservations-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      あなたの予約${countLabel}
+    </div>
+    <div class="own-reservation-rows"></div>
+  `;
+  const rows = card.querySelector('.own-reservation-rows');
+  for (const { mine, res, slot } of valid) {
+    appendOwnReservationRow(mine, res, slot, rows, card);
+  }
+  // screen-main の cal-toolbar の前に挿入
+  const main = document.getElementById('screen-main');
+  const toolbar = main.querySelector('.cal-toolbar');
+  main.insertBefore(card, toolbar);
 }
 
-function renderOwnReservationBanner(mine, res, slot, container){
+function appendOwnReservationRow(mine, res, slot, container, card){
   const startsAt = new Date(slot.starts_at);
   const endsAt = new Date(startsAt.getTime() + state.event.slot_duration_min * 60000);
   const cancelUrl = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(mine.token);
 
-  const banner = document.createElement('div');
-  banner.className = 'own-reservation-banner';
-  banner.dataset.resId = res.id;
-  banner.innerHTML = `
-    <div class="own-reservation-info">
-      <div class="own-reservation-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        あなたの予約
-      </div>
-      <div class="own-reservation-when">${fmtDateTime(startsAt)}〜${fmtTime(endsAt)} / ${escapeHtml(res.name)}さま</div>
-    </div>
-    <div class="own-reservation-actions">
+  const row = document.createElement('div');
+  row.className = 'own-reservation-row';
+  row.innerHTML = `
+    <div class="when">${fmtDateTime(startsAt)}〜${fmtTime(endsAt)} / ${escapeHtml(res.name)}さま</div>
+    <div class="actions">
       <a href="${escapeHtml(cancelUrl)}" class="btn btn-sm">予約詳細</a>
       <button class="btn btn-sm btn-danger" data-quick-cancel>キャンセル</button>
     </div>
   `;
-  container.appendChild(banner);
+  container.appendChild(row);
 
-  banner.querySelector('[data-quick-cancel]').addEventListener('click', async () => {
+  row.querySelector('[data-quick-cancel]').addEventListener('click', async () => {
     if (!confirm(`予約「${fmtDateTime(startsAt)}〜${fmtTime(endsAt)}」をキャンセルしますか？`)) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', mine.token);
     if (error) { showAlert('error', 'キャンセル失敗：' + error.message); return; }
     removeMine(state.eventId, mine.reservationId);
     showAlert('success', '予約をキャンセルしました');
-    banner.remove();
+    row.remove();
+    // 残りが無くなったらカードごと削除
+    if (!card.querySelector('.own-reservation-row')) card.remove();
+    else {
+      // 件数表示を更新
+      const remaining = card.querySelectorAll('.own-reservation-row').length;
+      const countEl = card.querySelector('.own-reservations-head .count');
+      if (remaining <= 1 && countEl) countEl.remove();
+      else if (countEl) countEl.textContent = `（${remaining}件）`;
+    }
     await loadSlots();
   });
 }
