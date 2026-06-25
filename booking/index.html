@@ -858,9 +858,10 @@ function showCompletion(slot, startsAt, endsAt, name, token, reservationId){
 }
 
 // 招待URLでアクセスした時の読み取り専用ビュー
+// セキュリティ：cancel_token が漏れないよう、ID指定アクセスでは name と slot_id のみ取得
 async function renderInviteScreen(){
   document.getElementById('screen-loading').hidden = true;
-  const { data: res } = await supa.from('booking_reservations').select('*').eq('id', state.inviteResId).maybeSingle();
+  const { data: res } = await supa.from('booking_reservations').select('id, slot_id, name').eq('id', state.inviteResId).maybeSingle();
   const sc = document.getElementById('screen-cancel');  // 同じコンテナを流用
   sc.hidden = false;
   if (!res) {
