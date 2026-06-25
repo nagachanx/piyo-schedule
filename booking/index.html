@@ -132,10 +132,11 @@
     .cal-add-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-cal-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); padding: 8px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius); cursor: pointer; text-decoration: none; transition: all 0.12s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-cal-primary svg { width: 14px; height: 14px; stroke-width: 2; flex-shrink: 0; }
-    .btn-cal-primary:hover { background: var(--primary-dk); border-color: var(--primary-dk); }
+    /* :not(:disabled) は .btn:hover との specificity 競合を避けるために必須 */
+    .btn-cal-primary:hover:not(:disabled) { background: var(--primary-dk); border-color: var(--primary-dk); color: #fff; }
     .btn-cal-secondary { background: #fff; color: var(--primary-dk); border: 1px solid var(--primary-lt); padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: all 0.12s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-cal-secondary svg { width: 13px; height: 13px; stroke-width: 2; flex-shrink: 0; }
-    .btn-cal-secondary:hover { background: var(--primary-bg); border-color: var(--primary); }
+    .btn-cal-secondary:hover:not(:disabled) { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-dk); }
     .cal-add-hint { font-size: 11px; color: var(--text-3); margin-top: 8px; line-height: 1.5; }
     .cal-add-tip { font-size: 11.5px; color: var(--primary-dk); background: rgba(67,168,106,0.08); border-radius: 6px; padding: 6px 10px; margin-top: 8px; line-height: 1.55; }
 
@@ -160,8 +161,9 @@
     .share-use-title svg { width: 14px; height: 14px; stroke-width: 2; color: var(--primary-dk); flex-shrink: 0; }
     .share-use-desc { font-size: 12px; color: var(--text-2); line-height: 1.55; }
 
-    /* 同じブラウザの予約済みバナー（クイックキャンセル付き） */
-    .own-reservation-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); margin-bottom: 14px; font-size: 13px; flex-wrap: wrap; }
+    /* 同じブラウザの予約済みバナー（複数予約対応・クイックキャンセル付き） */
+    #own-reservation-banners { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .own-reservation-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--primary-bg); border: 1.5px solid var(--primary); border-radius: var(--radius); font-size: 13px; flex-wrap: wrap; }
     .own-reservation-info { flex: 1; min-width: 180px; }
     .own-reservation-title { font-weight: 800; color: var(--primary-dk); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
     .own-reservation-title svg { width: 14px; height: 14px; stroke-width: 2; }
@@ -216,9 +218,9 @@
     html[data-theme="dark"] .cal-add-card { background: rgba(74, 222, 128, 0.10); border-color: rgba(74, 222, 128, 0.50); box-shadow: 0 2px 8px rgba(74,222,128,0.10); }
     html[data-theme="dark"] .cal-add-title { color: #BBF7D0; }
     html[data-theme="dark"] .btn-cal-primary { background: var(--primary); color: #0B1410; border-color: var(--primary); }
-    html[data-theme="dark"] .btn-cal-primary:hover { background: #4ADE80; border-color: #4ADE80; }
+    html[data-theme="dark"] .btn-cal-primary:hover:not(:disabled) { background: #86EFAC; border-color: #86EFAC; color: #052E16; }
     html[data-theme="dark"] .btn-cal-secondary { background: var(--surface); color: #BBF7D0; border-color: rgba(74, 222, 128, 0.35); }
-    html[data-theme="dark"] .btn-cal-secondary:hover { background: rgba(74, 222, 128, 0.12); border-color: var(--primary); }
+    html[data-theme="dark"] .btn-cal-secondary:hover:not(:disabled) { background: rgba(74, 222, 128, 0.18); border-color: var(--primary); color: #DCFCE7; }
     html[data-theme="dark"] .cal-add-tip { color: #BBF7D0; background: rgba(74, 222, 128, 0.12); }
     /* 予約完了モーダル用カード（ダーク） */
     html[data-theme="dark"] .completion-info { background: rgba(74, 222, 128, 0.10); border-color: rgba(74, 222, 128, 0.32); }
@@ -488,12 +490,29 @@ document.getElementById('modal').addEventListener('click', e => {
 });
 
 // localStorage：自分の予約履歴
+// 構造： { [eventId]: [{ reservationId, slotId, token, startsAt, name }, ...] }
+// 旧データ（オブジェクト1件）は読み込み時に配列化して互換性維持
 const MY_KEY = 'piyo-booking-mine';
 function getMine(){ try { return JSON.parse(localStorage.getItem(MY_KEY) || '{}'); } catch { return {}; } }
-function setMine(eventId, data){
+function getMineForEvent(eventId){
+  const v = getMine()[eventId];
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
+}
+function addMine(eventId, data){
   const m = getMine();
-  m[eventId] = data;
-  localStorage.setItem(MY_KEY, JSON.stringify(m));
+  const list = Array.isArray(m[eventId]) ? m[eventId] : (m[eventId] ? [m[eventId]] : []);
+  list.push(data);
+  m[eventId] = list;
+  try { localStorage.setItem(MY_KEY, JSON.stringify(m)); } catch {}
+}
+function removeMine(eventId, reservationId){
+  const m = getMine();
+  const list = Array.isArray(m[eventId]) ? m[eventId] : (m[eventId] ? [m[eventId]] : []);
+  const filtered = list.filter(x => x && x.reservationId !== reservationId);
+  if (filtered.length === 0) delete m[eventId];
+  else m[eventId] = filtered;
+  try { localStorage.setItem(MY_KEY, JSON.stringify(m)); } catch {}
 }
 
 // ─── 初期化 ───
@@ -567,61 +586,72 @@ async function loadSlots(){
   await checkOwnReservation();
 }
 
-// 同じブラウザで既に予約済みかチェックして、バナー表示
+// 同じブラウザで既に予約済みかチェックして、バナー表示（複数予約に対応）
 async function checkOwnReservation(){
-  const allMine = getMine();
-  const mine = allMine[state.eventId];
-  if (!mine) return;
-  // 予約がまだ存在するか確認
-  const { data: res } = await supa.from('booking_reservations').select('*').eq('id', mine.reservationId).maybeSingle();
-  if (!res) {
-    // 既にキャンセル済み or 削除済み → localStorageからも削除
-    delete allMine[state.eventId];
-    try { localStorage.setItem(MY_KEY, JSON.stringify(allMine)); } catch {}
+  // 既存バナーコンテナをクリア
+  let container = document.getElementById('own-reservation-banners');
+  if (container) container.innerHTML = '';
+
+  const list = getMineForEvent(state.eventId);
+  if (!list.length) {
+    if (container) container.remove();
     return;
   }
-  const slot = state.slots.find(s => s.id === res.slot_id);
-  if (!slot) return;
-  renderOwnReservationBanner(mine, res, slot);
+
+  // コンテナが無ければ作成して cal-toolbar の前に挿入
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'own-reservation-banners';
+    const main = document.getElementById('screen-main');
+    const toolbar = main.querySelector('.cal-toolbar');
+    main.insertBefore(container, toolbar);
+  }
+
+  // 各予約をDBで存在確認しながらバナー描画
+  for (const mine of list) {
+    const { data: res } = await supa.from('booking_reservations').select('*').eq('id', mine.reservationId).maybeSingle();
+    if (!res) {
+      // DB側で削除済み → localStorageからも除外
+      removeMine(state.eventId, mine.reservationId);
+      continue;
+    }
+    const slot = state.slots.find(s => s.id === res.slot_id);
+    if (!slot) continue;
+    renderOwnReservationBanner(mine, res, slot, container);
+  }
+
+  // 全部消えていたらコンテナごと削除
+  if (!container.children.length) container.remove();
 }
 
-function renderOwnReservationBanner(mine, res, slot){
+function renderOwnReservationBanner(mine, res, slot, container){
   const startsAt = new Date(slot.starts_at);
   const endsAt = new Date(startsAt.getTime() + state.event.slot_duration_min * 60000);
   const cancelUrl = location.origin + location.pathname + '?id=' + encodeURIComponent(state.eventId) + '&t=' + encodeURIComponent(mine.token);
 
-  // 既存バナーがあれば削除
-  const existing = document.getElementById('own-reservation-banner');
-  if (existing) existing.remove();
-
   const banner = document.createElement('div');
-  banner.id = 'own-reservation-banner';
   banner.className = 'own-reservation-banner';
+  banner.dataset.resId = res.id;
   banner.innerHTML = `
     <div class="own-reservation-info">
       <div class="own-reservation-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        あなたはこのイベントを予約済みです
+        あなたの予約
       </div>
       <div class="own-reservation-when">${fmtDateTime(startsAt)}〜${fmtTime(endsAt)} / ${escapeHtml(res.name)}さま</div>
     </div>
     <div class="own-reservation-actions">
       <a href="${escapeHtml(cancelUrl)}" class="btn btn-sm">予約詳細</a>
-      <button class="btn btn-sm btn-danger" id="own-quick-cancel">キャンセル</button>
+      <button class="btn btn-sm btn-danger" data-quick-cancel>キャンセル</button>
     </div>
   `;
-  // screen-main の cal-toolbar の前に挿入
-  const main = document.getElementById('screen-main');
-  const toolbar = main.querySelector('.cal-toolbar');
-  main.insertBefore(banner, toolbar);
+  container.appendChild(banner);
 
-  document.getElementById('own-quick-cancel').addEventListener('click', async () => {
+  banner.querySelector('[data-quick-cancel]').addEventListener('click', async () => {
     if (!confirm(`予約「${fmtDateTime(startsAt)}〜${fmtTime(endsAt)}」をキャンセルしますか？`)) return;
     const { error } = await supa.from('booking_reservations').delete().eq('cancel_token', mine.token);
     if (error) { showAlert('error', 'キャンセル失敗：' + error.message); return; }
-    const allMine = getMine();
-    delete allMine[state.eventId];
-    try { localStorage.setItem(MY_KEY, JSON.stringify(allMine)); } catch {}
+    removeMine(state.eventId, mine.reservationId);
     showAlert('success', '予約をキャンセルしました');
     banner.remove();
     await loadSlots();
@@ -773,7 +803,7 @@ async function submitReservation(slot, startsAt, endsAt){
   submitBtn.disabled = false;
   if (error) { showAlert('error', '予約に失敗：' + error.message); return; }
 
-  setMine(state.eventId, { reservationId: data.id, slotId: slot.id, token, startsAt: startsAt.toISOString(), name });
+  addMine(state.eventId, { reservationId: data.id, slotId: slot.id, token, startsAt: startsAt.toISOString(), name });
 
   // 主催者へメール通知（Power Automate経由・失敗しても予約は成立）
   notifyOrganizer(slot, startsAt, endsAt, name, memo).catch(() => {});
