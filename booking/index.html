@@ -668,8 +668,18 @@ function appendOwnReservationRow(mine, res, slot, container, card){
   });
 }
 
-function findSlot(d){ return state.slots.find(s => new Date(s.starts_at).getTime() === d.getTime()); }
-function isFull(slot){ return (state.resCounts[slot.id] || 0) >= slot.capacity; }
+// 同じ時間に複数の担当者の枠がありうるので、時間ごとにまとめて扱う（予約者には担当者は見せず合計の空きだけ表示）
+function findSlots(d){ return state.slots.filter(s => new Date(s.starts_at).getTime() === d.getTime()); }
+function remainingOf(slots){ return slots.reduce((sum, s) => sum + Math.max(0, s.capacity - (state.resCounts[s.id] || 0)), 0); }
+function groupSlotsByTime(slots){
+  const map = new Map();
+  slots.forEach(s => {
+    const key = new Date(s.starts_at).getTime();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(s);
+  });
+  return [...map.entries()].sort((a,b) => a[0] - b[0]).map(([t, list]) => ({ startsAt: new Date(t), slots: list }));
+}
 
 function renderCalendar(){
   const dur = state.event.slot_duration_min;
@@ -704,18 +714,17 @@ function renderCalendar(){
         const day = addDays(ws, dd);
         const cellStart = new Date(day); cellStart.setHours(h, mins, 0, 0);
         const cell = document.createElement('div'); cell.className = 'cal-cell';
-        const slot = findSlot(cellStart);
-        if (slot) {
+        const slots = findSlots(cellStart);
+        if (slots.length) {
           const isPast = cellStart < now;
-          const full = isFull(slot);
+          const remaining = remainingOf(slots);
+          const full = remaining === 0;
           const slotEl = document.createElement('div');
           slotEl.className = 'slot' + (full ? ' full' : '') + (isPast ? ' past' : '');
-          const count = state.resCounts[slot.id] || 0;
           if (isPast) slotEl.textContent = '終了';
           else if (full) slotEl.textContent = '満席';
-          else if (slot.capacity === 1) slotEl.textContent = '◯';
-          else slotEl.textContent = `残${slot.capacity - count}`;
-          if (!isPast && !full) slotEl.addEventListener('click', () => openReserveDialog(slot, cellStart));
+          else slotEl.textContent = `残り${remaining}`;
+          if (!isPast && !full) slotEl.addEventListener('click', () => openReserveDialog(cellStart));
           cell.appendChild(slotEl);
         }
         grid.appendChild(cell);
@@ -737,28 +746,26 @@ function renderCalendar(){
     head.textContent = `${fmtMD(day)}（${DOW_JP[day.getDay()]}）`;
     dayBox.appendChild(head);
     const slotsBox = document.createElement('div'); slotsBox.className = 'cal-day-slots';
-    const daySlots = state.slots.filter(s => sameDay(new Date(s.starts_at), day)).sort((a,b) => new Date(a.starts_at) - new Date(b.starts_at));
-    if (!daySlots.length) {
+    const dayGroups = groupSlotsByTime(state.slots.filter(s => sameDay(new Date(s.starts_at), day)));
+    if (!dayGroups.length) {
       const empty = document.createElement('div');
       empty.style.cssText = 'padding:10px;color:var(--text-3);font-size:12px;text-align:center';
       empty.textContent = '空き枠なし';
       slotsBox.appendChild(empty);
     } else {
-      daySlots.forEach(slot => {
-        const startsAt = new Date(slot.starts_at);
+      dayGroups.forEach(({ startsAt, slots }) => {
         const isPast = startsAt < now;
-        const full = isFull(slot);
+        const remaining = remainingOf(slots);
+        const full = remaining === 0;
         const row = document.createElement('div');
         row.className = 'cal-day-slot' + (full ? ' full' : '') + (isPast ? ' past' : '');
         const t = document.createElement('span'); t.className='time'; t.textContent = fmtTime(startsAt);
         const right = document.createElement('span'); right.className='right';
-        const count = state.resCounts[slot.id] || 0;
         if (isPast) right.textContent = '終了';
         else if (full) right.textContent = '満席';
-        else if (slot.capacity === 1) right.textContent = '空き';
-        else right.textContent = `残り ${slot.capacity - count} 名`;
+        else right.textContent = `残り ${remaining}`;
         row.appendChild(t); row.appendChild(right);
-        if (!isPast && !full) row.addEventListener('click', () => openReserveDialog(slot, startsAt));
+        if (!isPast && !full) row.addEventListener('click', () => openReserveDialog(startsAt));
         slotsBox.appendChild(row);
       });
     }
@@ -767,7 +774,7 @@ function renderCalendar(){
   }
 }
 
-function openReserveDialog(slot, startsAt){
+function openReserveDialog(startsAt){
   const endsAt = new Date(startsAt.getTime() + state.event.slot_duration_min * 60000);
   showModal(`
     <h2>${fmtDateTime(startsAt)}–${fmtTime(endsAt)} を予約</h2>
@@ -786,20 +793,28 @@ function openReserveDialog(slot, startsAt){
   `);
   document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', hideModal));
   document.getElementById('rsv-name').focus();
-  document.getElementById('rsv-submit').addEventListener('click', () => submitReservation(slot, startsAt, endsAt));
+  document.getElementById('rsv-submit').addEventListener('click', () => submitReservation(startsAt, endsAt));
 }
 
-async function submitReservation(slot, startsAt, endsAt){
+async function submitReservation(startsAt, endsAt){
   const name = document.getElementById('rsv-name').value.trim();
   const memo = document.getElementById('rsv-memo').value.trim();
   if (!name) { alert('お名前を入力してください'); return; }
   const submitBtn = document.getElementById('rsv-submit');
   submitBtn.disabled = true;
 
-  // 直前に最新の予約数を再フェッチ（簡易race対策）
-  const { data: cur } = await supa.from('booking_reservations').select('id', { count: 'exact', head: false }).eq('slot_id', slot.id);
-  const currentCount = (cur || []).length;
-  if (currentCount >= slot.capacity) {
+  // 直前に最新の予約数を再フェッチ（簡易race対策）し、同じ時間の担当者の中から空いている枠を自動で割り振る
+  // 空きが多い担当を優先（同じならランダム）して、特定の担当に偏らないようにする
+  const candidates = findSlots(startsAt);
+  const { data: cur } = await supa.from('booking_reservations').select('slot_id').in('slot_id', candidates.map(s => s.id));
+  const counts = {};
+  (cur || []).forEach(r => { counts[r.slot_id] = (counts[r.slot_id] || 0) + 1; });
+  const open = candidates
+    .map(s => ({ s, free: s.capacity - (counts[s.id] || 0), rnd: Math.random() }))
+    .filter(x => x.free > 0)
+    .sort((a,b) => b.free - a.free || a.rnd - b.rnd);
+  const slot = open.length ? open[0].s : null;
+  if (!slot) {
     submitBtn.disabled = false;
     hideModal();
     showAlert('error', '申し訳ありません、既に満席になりました。別の枠をお選びください。');
